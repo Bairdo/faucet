@@ -52,6 +52,9 @@ class DP(Conf):
     drop_bpdu = None
     drop_lldp = None
     group_table = False
+    max_hosts_per_resolve_cycle = None
+    max_host_fib_retry_count = None
+    max_resolve_backoff_time = None
 
     # Values that are set to None will be set using set_defaults
     # they are included here for testing and informational purposes
@@ -105,8 +108,14 @@ class DP(Conf):
         'drop_bpdu': True,
         # By default, drop LLDP. Set to False, to enable NFV offload of LLDP.
         'drop_lldp': True,
-        #Use GROUP tables for IP routing and vlan flooding
+        # Use GROUP tables for IP routing and vlan flooding
         'group_table': False,
+        # Max hosts to try to resolve per gateway resolution cycle.
+        'max_hosts_per_resolve_cycle': 5,
+        # Max number of times to retry resolution of a host FIB route.
+        'max_host_fib_retry_count': 10,
+        # Max number of seconds to back off to when resolving nexthops.
+        'max_resolve_backoff_time': 32,
         }
 
     def __init__(self, _id, conf):
@@ -323,7 +332,6 @@ class DP(Conf):
         resolve_mirror_destinations()
         resolve_port_names_in_acls()
 
-
     def get_native_vlan(self, port_num):
         if port_num not in self.ports:
             return None
@@ -345,14 +353,16 @@ class DP(Conf):
 
     def to_conf(self):
         result = self._to_conf()
-        if 'stack' in result:
-            result['stack'] = {
-                'root_dp': str(self.stack['root_dp'])
-                }
-        interface_dict = {}
-        for port in self.ports.itervalues():
-            interface_dict[port.name] = port.to_conf()
-        result['interfaces'] = interface_dict
+        if result is not None:
+            if 'stack' in result:
+                if result['stack'] is not None:
+                    result['stack'] = {
+                        'root_dp': str(self.stack['root_dp'])
+                    }
+            interface_dict = {}
+            for port in self.ports.itervalues():
+                interface_dict[port.name] = port.to_conf()
+            result['interfaces'] = interface_dict
         return result
 
     def __str__(self):
