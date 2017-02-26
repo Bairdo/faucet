@@ -98,6 +98,25 @@ def set_eth_dst(eth_dst):
     """
     return parser.OFPActionSetField(eth_dst=eth_dst)
 
+def set_ipv4_src(ipv4_src):
+    """Return action to set source IPv4 address.
+
+    Args:
+        ipv4_src (): source IPv4 address.
+    Returns:
+        ryu.ofproto.ofproto_v1_3_parser.OFPActionSetField: set field action.
+    """
+    return parser.OFPActionSetField(ipv4_src=ipv4_stc)
+
+def set_ipv4_dst(ipv4_dst):
+    """Return action to set destination IPv4 address.
+
+    Args:
+        ipv4_dst (): destination IPv4 address.
+    Returns:
+        ryu.ofproto.ofproto_v1_3_parser.OFPActionSetField: set field action.
+    """
+    return parser.OFPActionSetField(ipv4_dst=ipv4_dst)
 
 def vid_present(vid):
     """Return VLAN VID with VID_PRESENT flag set.
@@ -108,6 +127,12 @@ def vid_present(vid):
         int: VLAN VID with VID_PRESENT.
     """
     return vid | ofp.OFPVID_PRESENT
+
+def push_vlan(vlan_id):
+    return [
+        parser.OFPActionPushVlan(ether.ETH_TYPE_8021Q),
+        parser.OFPActionSetField(vlan_vid=vlan_vid)
+    ]
 
 
 def push_vlan_act(vlan_vid):
