@@ -21,6 +21,8 @@ import logging
 import time
 import os
 
+import lockfile
+
 from collections import namedtuple
 
 import aruba.aruba_pipeline as aruba
@@ -909,6 +911,9 @@ class Valve(object):
         Returns:
             list: OpenFlow messages, if any.
         """
+
+    def _learn_host(self, valves, dp_id, vlan, port, pkt, eth_src):
+        """Possibly learn a host on a port."""
         ofmsgs = []
         vlan = pkt_meta.vlan
         eth_src = pkt_meta.eth_src
@@ -922,7 +927,123 @@ class Valve(object):
                 'temporarily banning learning on this vlan, ' +
                 'and not learning %s',
                 vlan.max_hosts, vlan.vid, eth_src)
+        # ban learning new hosts if max_hosts reached on a VLAN.
+        if (vlan.max_hosts is not None and
+                len(vlan.host_cache) == vlan.max_hosts and
+                eth_src not in vlan.host_cache):
+            ofmsgs.append(self.host_manager.temp_ban_host_learning_on_vlan(
+                vlan))
+            self.logger.info(
+                'max hosts %u reached on vlan %u, ' +
+                'temporarily banning learning on this vlan, ' +
+                'and not learning %s',
+                vlan.max_hosts, vlan.vid, eth_src)
+        else:
+            if port.stack is None:
+                learn_port = port
+            else:
+                # TODO: simplest possible unicast learning.
+                # We find just one port that is the shortest unicast path to
+                # the destination. We could use other factors (eg we could
+                # load balance over multiple ports based on destination MAC).
+                # TODO: each DP learns independently. An edge DP could
+                # call other valves so they learn immediately without waiting
+                # for packet in.
+                # TODO: edge DPs could use a different forwarding algorithm
+                # (for example, just default switch to a neighbor).
+                host_learned_other_dp = None
+                # Find port that forwards closer to destination DP that
+                # has already learned this host (if any).
+                for other_dpid, other_valve in valves.iteritems():
+                    if other_dpid == dp_id:
+                        continue
+                    other_dp = other_valve.dp
+                    other_dp_host_cache = other_dp.vlans[vlan.vid].host_cache
+                    if eth_src in other_dp_host_cache:
+                        host = other_dp_host_cache[eth_src]
+                        if host.edge:
+                            host_learned_other_dp = other_dp
+                            break
+                # No edge DP may have learned this host yet.
+                if host_learned_other_dp is None:
+                    return ofmsgs
+
+                learn_port = self.dp.shortest_path_port(
+                    host_learned_other_dp.name)
+                self.logger.info(
+                    'host learned via stack port to %s',
+                    host_learned_other_dp.name)
+
+            # TODO: it would be good to be able to notify an external
+            # system upon re/learning a host.
+            self._write_mac_port_file(eth_src, dp_id, port)
+            print "dp: {0}, port {1}, mac {2}".format(dp_id, port, eth_src)
+            ofmsgs.extend(self.host_manager.learn_host_on_vlan_port(
+                learn_port, vlan, eth_src))
+            # Add FIB entries, if routing is active.
+            for route_manager in (
+                    self.ipv4_route_manager, self.ipv6_route_manager):
+                if route_manager:
+                    ofmsgs.extend(route_manager.add_host_fib_route_from_pkt(
+                        vlan, pkt))
+            self.logger.info(
+                'learned %u hosts on vlan %u',
+                len(vlan.host_cache), vlan.vid)
         return ofmsgs
+    def _write_mac_port_file(self, eth_src, dp_id, port):
+
+        print "locking file"
+        fd = lockfile.lock("/home/ubuntu/faucet_mac_learning.txt", os.O_RDWR)
+
+        text = ""
+        while True:
+            s = os.read(fd, 100)
+            if len(s) != 0:
+                text = text + s
+            else:
+                break
+        print "read entire file"
+        # go back to start of file
+        os.lseek(fd, 0, os.SEEK_SET)
+        # set the file length to 0 (clear the file), this because ports have a variable length.
+        os.ftruncate(fd, 0)
+        
+        if len(text) == 0:
+            print "empty file"
+            os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_id, port.number,port.mode))
+        else:
+            flag = False
+            for l in text.split("\n"):
+                print "L: " + l
+                if len(l) != 0:
+                    splits = l.split(",")
+                    print "splits " + str(splits)
+                    mac_ = splits[0]
+                    dp_id_ = splits[1]
+                    port_ = splits[2]
+                    mode_ = splits[3]
+                    if mac_ == eth_src:
+                        print "type of dp_id_: {0} is {1}".format(dp_id_, type(dp_id_))
+                        print "type of dp_id: {0} is {1}".format(dp_id, type(dp_id))
+                        if dp_id == int(dp_id_):
+                            print mac_  + " macs are the same"
+                            # update line.
+                            os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_id, port.number, port.mode))
+                            flag = True
+                        else:
+                            print "macs {0} are the same, but different dpids: {1} {2}".format(mac_, dp_id, dp_id_)
+                            os.write(fd, mac_ + "," + dp_id_ + "," + port_ + "," + mode_ + "\n")                           
+                    else:
+                        print mac_ + " " + eth_src + " are different"
+                        os.write(fd, mac_ + "," + dp_id_ + "," + port_ + "," + mode_ + "\n")
+            print "done looping"
+            if not flag:
+                print "write at end"
+                os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_id, port.number, port.mode))
+                print "done write at end"
+        print "done writing"
+        lockfile.unlock(fd)
+        print "unlocked"
 
     def rcv_packet(self, dp_id, valves, in_port, vlan_vid, pkt):
         """Handle a packet from the dataplane (eg to re/learn a host).

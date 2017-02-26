@@ -21,8 +21,14 @@ import valve_of
 # possibly replace with a class for ACLs
 def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
     acl_inst = []
-    match_dict = {}
-    for attrib, attrib_value in rule_conf.items():
+    match_dict = OrderedDict()
+    if vlan_vid is not None:
+        match_dict['vlan_vid'] = valve_of.vid_present(vlan_vid)
+        print valve_of.match_from_dict(match_dict)
+
+    for attrib, attrib_value in rule_conf.iteritems():
+        if attrib == 'name':
+            continue
         if attrib == 'in_port':
             continue
         if attrib == 'actions':
@@ -55,13 +61,28 @@ def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
                 output_actions.append(valve_of.output_port(port_no))
                 acl_inst.append(valve_of.apply_actions(output_actions))
                 continue
+            actions = []
+            if 'dl_dst' in attrib_value:
+         	    actions.append(valve_of.set_eth_dst(attrib_value["dl_dst"]))
+            if "vlan_vid" in attrib_value:
+                # TODO If the vlan is not already loaded, load it.
+                print "vlan_vid " + str(attrib_value["vlan_vid"])
+                actions.extend(valve_of.push_vlan_act(attrib_value["vlan_vid"]))
+            if "pop_vlan" in attrib_value:
+                actions.append(valve_of.pop_vlan())
+#            if "ipv4_dst" in attrib_value:
+#                print "found ipv4_dst"
+#                actions.append(valve_of.set_ipv4_dst(attrib_value["ipv4_dst"]))
+
+
+            acl_inst.append(valve_of.apply_actions(actions))
+
+
             if allow:
                 acl_inst.append(acl_allow_inst)
         else:
             match_dict[attrib] = attrib_value
     if port_num is not None:
         match_dict['in_port'] = port_num
-    if vlan_vid is not None:
-        match_dict['vlan_vid'] = valve_of.vid_present(vlan_vid)
     acl_match = valve_of.match_from_dict(match_dict)
     return acl_match, acl_inst
