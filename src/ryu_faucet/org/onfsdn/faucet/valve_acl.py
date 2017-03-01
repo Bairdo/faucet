@@ -99,7 +99,6 @@ def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
             if  len(actions) > 0:
                 acl_inst.append(valve_of.apply_actions(actions))
 
-
             if allow:
                 acl_inst.append(acl_allow_inst)
         else:
