@@ -84,7 +84,7 @@ def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
                 continue
             actions = []
             if 'dl_dst' in attrib_value:
-         	    actions.append(valve_of.set_eth_dst(attrib_value["dl_dst"]))
+                actions.append(valve_of.set_eth_dst(attrib_value["dl_dst"]))
             if "vlan_vid" in attrib_value:
                 # TODO If the vlan is not already loaded, load it.
                 print "vlan_vid " + str(attrib_value["vlan_vid"])
@@ -96,7 +96,8 @@ def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
 #                actions.append(valve_of.set_ipv4_dst(attrib_value["ipv4_dst"]))
 
 
-            acl_inst.append(valve_of.apply_actions(actions))
+            if  len(actions) > 0:
+                acl_inst.append(valve_of.apply_actions(actions))
 
 
             if allow:
