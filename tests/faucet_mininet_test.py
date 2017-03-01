@@ -550,7 +550,6 @@ vlans:
 """
 
     def test_untagged(self):
-        self.force_faucet_reload('       timeout: 60')
         self.net.pingAll()
         learned_hosts = [
             host for host in self.net.hosts if self.host_learned(host)]
@@ -713,6 +712,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -796,6 +796,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1067,6 +1068,7 @@ vlans:
 """
 
     CONFIG = """
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1429,6 +1431,7 @@ vlans:
 """
 
     CONFIG = """
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 tagged_vlans: [100]
@@ -1479,7 +1482,6 @@ vlans:
     CONFIG = """
         arp_neighbor_timeout: 2
         max_resolve_backoff_time: 1
-        max_host_fib_retry_count: 2
         interfaces:
             %(port_1)d:
                 tagged_vlans: [100]
@@ -1520,6 +1522,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1562,6 +1565,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1610,6 +1614,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1677,6 +1682,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1740,6 +1746,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 native_vlan: 100
@@ -1812,6 +1819,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         interfaces:
             %(port_1)d:
                 tagged_vlans: [100]
@@ -2290,7 +2298,7 @@ class FaucetGroupTableTest(FaucetUntaggedTest):
                     '"table_id": 7,.+"dl_vlan": "100"'))
 
 
-class FaucetSingleUntaggedIPv4RouteGroupTableTest(FaucetUntaggedTest):
+class FaucetSingleGroupTableUntaggedIPv4RouteTest(FaucetUntaggedTest):
 
     CONFIG_GLOBAL = """
 vlans:
@@ -2310,6 +2318,7 @@ vlans:
 """
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         group_table: True
         interfaces:
             %(port_1)d:
@@ -2341,7 +2350,7 @@ vlans:
             second_host, second_host_routed_ip,
             with_group_table=True)
 
-class FaucetSingleUntaggedIPv6RouteGroupTableTest(FaucetUntaggedTest):
+class FaucetSingleGroupUntaggedIPv6RouteTest(FaucetUntaggedTest):
 
     CONFIG_GLOBAL = """
 vlans:
@@ -2362,6 +2371,7 @@ vlans:
 
     CONFIG = """
         arp_neighbor_timeout: 2
+        max_resolve_backoff_time: 1
         group_table: True
         interfaces:
             %(port_1)d:
