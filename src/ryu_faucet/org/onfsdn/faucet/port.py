@@ -28,6 +28,7 @@ class Port(Conf):
     tagged_vlans = []
     acl_in = None
     stack = {}
+    mode = None
 
     defaults = {
         'number': None,
@@ -42,6 +43,7 @@ class Port(Conf):
         'tagged_vlans': None,
         'acl_in': None,
         'stack': None,
+        'mode': None,
         }
 
     def __init__(self, _id, conf=None):
@@ -59,6 +61,7 @@ class Port(Conf):
         self._set_default('name', str(self._id))
         self._set_default('description', self.name)
         self._set_default('tagged_vlans', [])
+        self._set_default('mode', self.mode)
 
     @property
     def phys_up(self):
