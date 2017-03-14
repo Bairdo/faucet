@@ -18,6 +18,6 @@ before_install:
 #  - "make"
 script:
 #  - "cd ./tests ; ./test_config.py ; ./test_check_config.py ; ./test_valve.py"
-  - docker run --privileged -ti bairdo/faucet-tests-auth | grep 
+  - docker run --privileged -ti bairdo/faucet-tests-auth
 #  - docker ps -a
 
