@@ -34,6 +34,7 @@ class FAUCET(Controller):
                  cargs='--ofp-tcp-listen-port=%s --verbose --use-stderr',
                  **kwargs):
         name = 'faucet-%u' % os.getpid()
+        print ports_sock
         self.ofctl_port, _ = faucet_mininet_test_util.find_free_port(
             ports_sock)
         cargs = '--wsapi-port=%u %s' % (self.ofctl_port, cargs)
@@ -332,8 +333,8 @@ dbs:
             try:
                 ofctl_result = json.loads(requests.get(
                     '%s/stats/flow/%s' % (self.ofctl_rest_url(), dpid)).text)
-            except (ValueError, requests.exceptions.ConnectionError):
-                # Didn't get valid JSON, try again
+            except (ValueError, requests.exceptions.ConnectionError) as e:
+                # Didn't get valid JSON, try again 
                 time.sleep(1)
                 continue
             flow_dump = ofctl_result[dpid]
@@ -343,7 +344,7 @@ dbs:
     def get_matching_flow_on_dpid(self, dpid, exp_flow, timeout=10):
         """Return flow matching an RE from DPID."""
         for _ in range(timeout):
-            flow_dump = self.get_all_flows_from_dpid(dpid)
+            flow_dump = self.get_all_flows_from_dpid(dpid) 
             for flow in flow_dump:
                 if re.search(exp_flow, flow):
                     return json.loads(flow)
@@ -399,7 +400,7 @@ dbs:
             if self.host_learned(host, timeout=1):
                 return
             # stimulate host learning with a broadcast ping
-            host.cmd('%s -i 0.2 -c 1 -b %s' % (ping_cmd, broadcast))
+            host.cmd('%s -i 0.2 -c 1 -b %s' % (ping_cmd, broadcast)) 
         self.fail('host %s could not be learned' % host)
 
     def get_ofchannel_logs(self):

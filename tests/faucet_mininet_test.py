@@ -186,6 +186,8 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
 
     def start_net(self):
         """Start Mininet network."""
+        print "ports_sock"
+        print self.ports_sock
         self.net = Mininet(
             self.topo,
             controller=faucet_mininet_test_base.FAUCET(
