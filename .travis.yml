@@ -7,10 +7,13 @@ python:
   - "2.7"
 
 before_install:
-  - docker build -t bairdo/faucet-tests -f Dockerfile.tests .
-  - docker run --privileged -ti bairdo/faucet-tests
+#  - docker build -t bairdo/faucet-tests -f Dockerfile.tests .
+#  - docker run --privileged -ti bairdo/faucet-tests
+#  - docker ps -a
+  - docker build -t bairdo/faucet-tests-auth -f Dockerfile.auth .
+  - docker run --privileged -ti bairdo/faucet-tests-auth
   - docker ps -a
-#  - "sudo apt-get install graphviz"
+  - "sudo apt-get install graphviz"
 #  - "sudo pip install -r requirements.txt"
 
 #install:
