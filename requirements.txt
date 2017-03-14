@@ -10,3 +10,4 @@ pyyaml
 pylint
 ryu>=4.9
 tinyrpc
+ruamel.yaml

@@ -1,0 +1,73 @@
+---
+vlans:
+    100:
+        description: "authentication"
+acls:
+    port1_1:
+        - rule:
+            actions:
+                allow: 1
+    port1_2:
+        - rule:
+            actions:
+                allow: 1
+    port1_3:
+        - rule:
+            name: d1x
+            dl_type: 34958
+            actions:
+                allow: 1
+        - rule:
+            name: redir41x
+            actions:
+                allow: 1
+                dl_dst: 00:00:00:00:00:00
+dps:
+    dp1:
+        dp_id: 0x1
+        hardware: "Open vSwitch"
+        interfaces:
+            1:
+                name: portal
+                native_vlan: 100
+                acl_in: port1_1
+            2:
+                name: gateway
+                native_vlan: 100
+                acl_in: port1_2
+            3:
+                name: hosts
+                native_vlan: 100
+                acl_in: port1_2
+            4:
+                name: asljdhf
+                native_vlan: 100
+                acl_in: port1_2
+
+    dp2:
+        dp_id: 0x2
+        hardware: "Open vSwitch"
+        interfaces:
+            1:
+                name: p1
+                native_vlan: 100
+                acl_in: port1_2
+            2:
+                name: p2
+                native_vlan: 100
+                acl_in: port1_3
+                mode: access
+            3:
+                name: p3
+                native_vlan: 100
+                acl_in: port1_3
+                mode: access
+            4:
+                name: p4
+                native_vlan: 100
+                acl_in: port1_3
+                mode: access
+            5:
+                name: p5
+                native_vlan: 100
+                acl_in: port1_2

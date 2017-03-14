@@ -790,7 +790,7 @@ class Valve(object):
         # if mac already in, overwrite
         # unlock file
         print "locking file"
-        fd = lockfile.lock("faucet_mac_learning.txt", os.O_RDWR | os.O_CREAT)
+        fd = lockfile.lock("/home/ubuntu/faucet_mac_learning.txt", os.O_RDWR | os.O_CREAT)
 
         text = ""
         while True:

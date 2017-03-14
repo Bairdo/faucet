@@ -1,0 +1,104 @@
+FROM osrg/ryu
+
+RUN \
+  apt-get update && \
+  apt-get install -qy --no-install-recommends \
+    git \
+    iputils-ping \
+    libpython2.7-dev \
+    libyaml-dev \
+    net-tools \
+    netcat-openbsd \
+    psmisc \
+    python-paramiko \
+    python-pip \
+    sudo \
+    tcpdump \
+    vlan \
+    ladvd \
+    libcurl4-gnutls-dev \
+    libssl-dev \
+    openssl \
+    build-essential \
+    nano \
+    dhcpcd5 \
+    wpasupplicant
+
+
+#RUN mv /sbin/dhclient /usr/sbin/dhclient
+
+RUN \
+  git clone https://github.com/Bairdo/hostapd-d1xf.git && \
+  cd hostapd-d1xf/hostapd && \
+  git checkout username-fix-2 && \
+  sed -ie  's/10\.0\.0\.2/10\.0\.13\.3/g' /root/hostapd-d1xf/src/eap_server/eap_server.c && \
+  sed -ie  's/10\.0\.0\.2/10\.0\.13\.3/g' /root/hostapd-d1xf/src/eapol_auth/eapol_auth_sm.c && \
+  make && \
+  printf "interface=portal-eth0\n\
+driver=wired\n\
+logger_stdout=-1\n\
+logger_stdout_level=0\n\
+ieee8021x=1\n\
+eap_reauth_period=3600\n\
+use_pae_group_addr=0\n\
+eap_server=1\n\
+eap_user_file=/root/hostapd-d1xf/hostapd/hostapd.eap_user\n" > wired.conf && \
+  printf '"user"          MD5     "password"\n\
+"host110user"   MD5     "host110pass"\n\
+"host111user"   MD5     "host111pass"\n\
+"host112user"   MD5     "host112pass"\n\
+"host113user"   MD5     "host113pass"\n\
+"host114user"   MD5     "host114pass"\n' > hostapd.eap_user
+
+
+RUN \
+  git clone git://github.com/mininet/mininet && \
+  cd mininet && \
+  git checkout -b 2.2.1 2.2.1 && \
+  cd .. && \
+  mininet/util/install.sh -nfv
+
+RUN \
+  wget --no-check-certificate https://github.com/Exa-Networks/exabgp/archive/3.4.10.tar.gz && \
+  tar -zxf 3.4.10.tar.gz && \
+  cd exabgp-3.4.10 && python setup.py install
+
+RUN \
+  apt-get remove -qy python-pip && \
+  wget https://bootstrap.pypa.io/get-pip.py && \
+  python get-pip.py
+
+RUN \
+  apt-get remove -qy pylint && \
+  pip install --upgrade pylint>=1.6
+
+RUN \
+  wget -O uber-captive-portal-webserver-1.0.SNAPSHOT.jar https://github.com/Bairdo/sdn-authenticator-webserver/releases/download/v0.2.2/uber-captive-portal-webserver-1.0-SNAPSHOT.jar
+
+COPY ./ /faucet-src/
+
+
+
+RUN \
+  pip install -r /faucet-src/requirements.txt && \
+  pip install /faucet-src
+
+
+RUN \
+  mkdir -p /var/log/ryu/faucet && \
+  touch /var/log/ryu/faucet/faucet.log && \
+  mkdir -p /etc/ryu/faucet/ && \
+  touch /etc/ryu/faucet/faucet.yaml && \
+  mkdir -p /home/ubuntu && \
+  touch /home/ubuntu/faucet_mac_learning.txt && \
+  touch /etc/ryu/1x_active_users.txt && \
+  touch /etc/ryu/1x_idle_users.txt
+  
+RUN \
+  cp /faucet-src/tests/config/testconfigv2-1x.yaml /etc/ryu/faucet/faucet.yaml
+
+
+CMD ["/faucet-src/docker/run_authtests.sh"]
+
+#CMD ["/bin/bash"]
+
