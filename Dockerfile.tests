@@ -44,4 +44,11 @@ RUN \
   pip install -r /faucet-src/requirements.txt && \
   pip install /faucet-src
 
+# HACK around https://github.com/dotcloud/docker/issues/5490
+RUN mv /usr/sbin/tcpdump /usr/bin/tcpdump
+
+RUN \
+  mkdir -p /home/ubuntu/ && \
+  touch /home/ubuntu/faucet_mac_learning.txt
+
 CMD ["/faucet-src/docker/runtests.sh"]
