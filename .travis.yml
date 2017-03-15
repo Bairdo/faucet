@@ -20,8 +20,8 @@ before_install:
 # - "sudo apt-get install graphviz"
 # - "sudo pip install -r requirements.txt"
 
-install:
-  - "make"
+#install:
+#  - "make"
 script:
 # - "cd ./tests ; ./test_config.py ; ./test_check_config.py ; ./test_valve.py"
   - docker run --privileged -ti bairdo/faucet-tests-auth | tee /dev/tty |awk '/FAILED \(fail/{f=1} END{exit f}'
