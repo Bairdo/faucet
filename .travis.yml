@@ -6,6 +6,11 @@ services:
 python:
   - "2.7"
 
+matrix:
+  include:
+    - dist: xenial
+      env: dist="16.04 LTS xenial"
+
 before_install:
 #  - docker build -t bairdo/faucet-tests -f Dockerfile.tests .
 #  - docker run --privileged -ti bairdo/faucet-tests
