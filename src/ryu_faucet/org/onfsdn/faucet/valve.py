@@ -790,6 +790,9 @@ class Valve(object):
         # if mac already in, overwrite
         # unlock file
         print "locking file"
+        directory = "/etc/ryu/faucet"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         fd = lockfile.lock("/etc/ryu/faucet/faucet_mac_learning.txt", os.O_RDWR | os.O_CREAT)
 
         text = ""
