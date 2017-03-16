@@ -66,10 +66,10 @@ class HTTPHandler(BaseHTTPRequestHandler):
         dpid = ""
         port = ""
         print "about to lock file"
-        fd = lockfile.lock("/home/ubuntu/faucet_mac_learning.txt", os.O_RDWR)
+        fd = lockfile.lock("/etc/ryu/faucet/faucet_mac_learning.txt", os.O_RDWR)
 
         flag = False
-        with open("/home/ubuntu/faucet_mac_learning.txt", "r") as mac_learn:
+        with open("/etc/ryu/faucet/faucet_mac_learning.txt", "r") as mac_learn:
             for l in mac_learn:
                 if l.startswith(mac):
                     print l

@@ -5,9 +5,9 @@ sudo: required
 before_install:
   - "sudo apt-get install graphviz"
   - "sudo pip install -r requirements.txt"
-#  - "mkdir -p /home/ubuntu"
-  - "touch /home/ubuntu/faucet_mac_learning.txt"
 install:
   - "make"
+  - "mkdir -p /etc/ryu/faucet"
+  - "touch /etc/ryu/faucet/faucet_mac_learning.txt"
 script:
   - "cd ./tests ; ./test_config.py ; ./test_check_config.py ; ./test_valve.py"
