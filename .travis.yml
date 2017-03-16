@@ -10,4 +10,4 @@ install:
 #  - "mkdir -p /etc/ryu/faucet"
 #  - "touch /etc/ryu/faucet/faucet_mac_learning.txt"
 script:
-  - "cd ./tests ; ./test_config.py ; ./test_check_config.py ; ./test_valve.py"
+  - "cd ./tests ; ./test_config.py ; sudo ./test_check_config.py ; sudo ./test_valve.py"
