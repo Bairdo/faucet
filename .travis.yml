@@ -4,6 +4,8 @@ python:
 before_install:
   - "sudo apt-get install graphviz"
   - "sudo pip install -r requirements.txt"
+  - "mkdir -p /home/ubuntu"
+  - "touch /home/ubuntu/faucet_mac_learning.txt"
 install:
   - "make"
 script:
