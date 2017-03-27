@@ -159,7 +159,7 @@ def set_ipv4_src(ipv4_src):
     Returns:
         ryu.ofproto.ofproto_v1_3_parser.OFPActionSetField: set field action.
     """
-    return parser.OFPActionSetField(ipv4_src=ipv4_stc)
+    return parser.OFPActionSetField(ipv4_src=ipv4_src)
 
 def set_ipv4_dst(ipv4_dst):
     """Return action to set destination IPv4 address.
