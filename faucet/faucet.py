@@ -45,6 +45,7 @@ from ryu.lib.packet import vlan as ryu_vlan
 from ryu.ofproto import ether
 from ryu.services.protocols.bgp.bgpspeaker import BGPSpeaker
 
+import lockfile
 
 class EventFaucetReconfigure(event.EventBase):
     """Event used to trigger FAUCET reconfiguration."""
@@ -362,11 +363,15 @@ class Faucet(app_manager.RyuApp):
             ryu_event (ryu.controller.event.EventReplyBase): triggering event.
         """
         new_config_file = os.getenv('FAUCET_CONFIG', self.config_file)
+        # TODO lock
+        conf_fd = lockfile.lock(new_config_file, os.O_RDWR)
         if not self._config_changed(new_config_file):
             self.logger.info('configuration is unchanged, not reloading')
             return
         self.config_file = new_config_file
         self.config_hashes, new_dps = dp_parser(new_config_file, self.logname)
+        # TODO unlock
+        lockfile.unlock(conf_fd)
         for new_dp in new_dps:
             # pylint: disable=no-member
             flowmods = self.valves[new_dp.dp_id].reload_config(new_dp)
