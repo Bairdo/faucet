@@ -876,7 +876,7 @@ class Valve(object):
         # system upon re/learning a host.
         ofmsgs.extend(self.host_manager.learn_host_on_vlan_port(
             learn_port, pkt_meta.vlan, pkt_meta.eth_src))
-        self._write_mac_port_file(pkt_meta.eth_src, dp_id, learn_port)
+        self._write_mac_port_file(pkt_meta.eth_src, valves[dp_id].dp.name, learn_port)
         # Add FIB entries, if routing is active.
         for route_manager in (
                 self.ipv4_route_manager, self.ipv6_route_manager):
@@ -912,9 +912,11 @@ class Valve(object):
             list: OpenFlow messages, if any.
         """
 
-    def _write_mac_port_file(self, eth_src, dp_id, port):
+    def _write_mac_port_file(self, eth_src, dp_name, port):
 
-        print "locking file"
+        print("locking file\n")
+        print("eth: {}, dp: {}, mode: {}".format(eth_src, dp_name, port.mode))
+        # TODO make this a configurable option.
         fd = lockfile.lock("/home/ubuntu/faucet_mac_learning.txt", os.O_RDWR)
 
         text = ""
@@ -924,48 +926,48 @@ class Valve(object):
                 text = text + s
             else:
                 break
-        print "read entire file"
+        print("read entire file")
         # go back to start of file
         os.lseek(fd, 0, os.SEEK_SET)
         # set the file length to 0 (clear the file), this because ports have a variable length.
         os.ftruncate(fd, 0)
         
         if len(text) == 0:
-            print "empty file"
-            os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_id, port.number,port.mode))
+            print("empty file")
+            os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_name, port.number, port.mode))
         else:
             flag = False
             for l in text.split("\n"):
-                print "L: " + l
+                print("L: " + l)
                 if len(l) != 0:
                     splits = l.split(",")
-                    print "splits " + str(splits)
+                    print("splits " + str(splits))
                     mac_ = splits[0]
-                    dp_id_ = splits[1]
+                    dp_name_ = splits[1]
                     port_ = splits[2]
                     mode_ = splits[3]
                     if mac_ == eth_src:
-                        print "type of dp_id_: {0} is {1}".format(dp_id_, type(dp_id_))
-                        print "type of dp_id: {0} is {1}".format(dp_id, type(dp_id))
-                        if dp_id == int(dp_id_):
-                            print mac_  + " macs are the same"
+                        print("type of dp_name_: {0} is {1}".format(dp_name_, type(dp_name_)))
+                        print("type of dp_name: {0} is {1}".format(dp_name, type(dp_name)))
+                        if dp_name_ == dp_name:
+                            print(mac_  + " macs are the same")
                             # update line.
-                            os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_id, port.number, port.mode))
+                            os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_name, port.number, port.mode))
                             flag = True
                         else:
-                            print "macs {0} are the same, but different dpids: {1} {2}".format(mac_, dp_id, dp_id_)
-                            os.write(fd, mac_ + "," + dp_id_ + "," + port_ + "," + mode_ + "\n")                           
+                            print("macs {0} are the same, but different dpids: {1} {2}".format(mac_, dp_name, dp_name_))
+                            os.write(fd, mac_ + "," + dp_name_ + "," + port_ + "," + mode_ + "\n")                           
                     else:
-                        print mac_ + " " + eth_src + " are different"
-                        os.write(fd, mac_ + "," + dp_id_ + "," + port_ + "," + mode_ + "\n")
-            print "done looping"
+                        print(mac_ + " " + eth_src + " are different")
+                        os.write(fd, mac_ + "," + dp_name_ + "," + port_ + "," + mode_ + "\n")
+            print("done looping")
             if not flag:
-                print "write at end"
-                os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_id, port.number, port.mode))
-                print "done write at end"
-        print "done writing"
+                print("write at end")
+                os.write(fd, "{0},{1},{2},{3}\n".format(eth_src, dp_name, port.number, port.mode))
+                print("done write at end")
+        print("done writing")
         lockfile.unlock(fd)
-        print "unlocked"
+        print("unlocked\n")
 
     def rcv_packet(self, dp_id, valves, in_port, vlan_vid, pkt):
         """Handle a packet from the dataplane (eg to re/learn a host).
