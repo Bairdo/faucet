@@ -79,6 +79,10 @@ class FaucetMetrics(object):
         self.faucet_config_dp_name = Gauge(
             'faucet_config_dp_name',
             'map of DP name to DP ID', ['dpid', 'name'])
+        self.learned_macs = Gauge(
+            'learned_macs',
+            'max address stored as 64bit number to DP ID, port, VLAN, and n (maximum number of hosts on the port)',
+            ['dpid', 'port', 'vlan', 'n'])
 
 
 class EventFaucetReconfigure(event.EventBase):
