@@ -574,7 +574,8 @@ dbs:
         hosts = list(start_port_stats.keys())
         raw_server_client_results = self.net.iperf(
             hosts=hosts, seconds=seconds, l4Type=l4Type, fmt='M')
-        iperf_mbps = float(raw_server_client_results[0].split(' ')[0])
+        print("iperf {}, after split {}".format(raw_server_client_results[0], raw_server_client_results[0].split(' ')[0]))
+        iperf_mbps = float(raw_server_client_results[1].split(' ')[0])
         self.assertTrue(iperf_mbps > min_mbps)
         # TODO: account for drops.
         for _ in range(3):
@@ -821,6 +822,7 @@ dbs:
         add_cmd = 'ip addr add %s dev %s label %s:1' % (
             alias_ip.with_prefixlen, host.intf(), host.intf())
         host.cmd(del_cmd)
+        print("add_cmd {}".format(add_cmd))
         self.assertEquals('', host.cmd(add_cmd))
 
     def _verify_host_learned_mac(self, host, ip, ip_ver, mac, retries):
