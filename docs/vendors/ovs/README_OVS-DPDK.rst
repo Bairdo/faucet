@@ -1,7 +1,7 @@
 :Authors: - Josh Bailey
 
 =======================
-FAUCET on OVS with DPDK 
+FAUCET on OVS with DPDK
 =======================
 
 ------------
@@ -24,7 +24,32 @@ These instructions are known to work for Ubuntu 16.0.4, with OVS 2.7.0 and DPDK 
 **Bind NIC ports to DPDK**
 
 NOTE: if you have a multiport NIC, you must bind all the ports on the NIC to DPDK, even if you do not use them all.
-From the DPDK source directory:
+
+From the DPDK source directory, determine the relationship between the interfaces you want to use with DPDK and their PCI IDs:
+
+::
+
+    export DPDK_DIR=`pwd`
+    $DPDK_DIR/tools/dpdk-devbind.py --status
+
+In this example, we want to use enp1s0f0 and enp1s0f1.
+
+::
+
+    # ./tools/dpdk-devbind.py --status
+
+    Network devices using DPDK-compatible driver
+    ============================================
+    <none>
+
+    Network devices using kernel driver
+    ===================================
+    0000:01:00.0 '82580 Gigabit Network Connection' if=enp1s0f0 drv=igb unused=
+    0000:01:00.1 '82580 Gigabit Network Connection' if=enp1s0f1 drv=igb unused=
+    0000:01:00.2 '82580 Gigabit Network Connection' if=enp1s0f2 drv=igb unused=
+    0000:01:00.3 '82580 Gigabit Network Connection' if=enp1s0f3 drv=igb unused=
+
+Still from the DPDK source directory:
 
 ::
 
@@ -74,13 +99,13 @@ From the DPDK source directory:
 
 ::
 
-    ovs-vsctl add-br br0 -- set bridge br0 datapath_type=netdev
-    ovs-vsctl add-port br0 dpdk0 -- set interface dpdk0 type=dpdk options:dpdk-devargs=0000:01:00.0
-    ovs-vsctl add-port br0 dpdk1 -- set interface dpdk1 type=dpdk options:dpdk-devargs=0000:01:00.1
+    ovs-vsctl add-br br0 -- set bridge br0 datapath_type=netdev protocols=OpenFlow13
+    ovs-vsctl add-port br0 dpdk0 -- set interface enp1s0f0 type=dpdk options:dpdk-devargs=0000:01:00.0
+    ovs-vsctl add-port br0 dpdk1 -- set interface enp1s0f1 type=dpdk options:dpdk-devargs=0000:01:00.1
     ovs-vsctl set-fail-mode br0 secure
-    ovs-vsctl set-controller br0 tcp:127.0.0.1:6633
+    ovs-vsctl set-controller br0 tcp:127.0.0.1:6653
     ovs-vsctl show br0
-    ovs-vsctl get Bridge br0 datapath_id
+    ovs-vsctl get bridge br0 datapath_id
 
 **Create faucet.yaml**
 
@@ -106,7 +131,7 @@ NOTE: change dp_id, to the value reported above, prefaced with "0x".
 
 ::
 
-    $ ryu-manager --config-file=/home/faucet/faucet/etc/ryu/ryu.conf /home/faucet/faucet/faucet/faucet.py --verbose --ofp-listen-host=127.0.0.1
+    $ ryu-manager faucet.faucet --verbose --ofp-listen-host=127.0.0.1
 
 
 **Test connectivity**
@@ -128,4 +153,3 @@ Host(s) on enp1s0f0 and enp1s0f1 in the same IP subnet, should now be able to co
     May 11 14:53:33 faucet.valve INFO     learned 1 hosts on vlan 100
     May 11 14:53:33 faucet.valve INFO     DPID 159303465858404 (0x90e2ba7e7564) Packet_in src:00:16:41:32:87:e0 in_port:2 vid:100
     May 11 14:53:33 faucet.valve INFO     learned 2 hosts on vlan 100
-

@@ -1052,6 +1052,9 @@ class Valve(object):
         """
         if not self._known_up_dpid_and_port(dp_id, in_port):
             return []
+        if not vlan_vid in self.dp.vlans:
+            self.dpid_log('Packet_in for unexpected VLAN %s' % (vlan_vid))
+            return []
 
         pkt_meta = self._parse_rcv_packet(in_port, vlan_vid, pkt)
         ofmsgs = []
