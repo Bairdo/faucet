@@ -8,11 +8,11 @@
 
  REQUIRES:
 
- * mininet 2.2.2 or later (Ubuntu 14 ships with 2.1.0, which is not supported)
+ * mininet 2.2.0 or later (Ubuntu 14 ships with 2.1.0, which is not supported)
    use the "install from source" option from
    https://github.com/mininet/mininet/blob/master/INSTALL.
    suggest ./util/install.sh -n
- * OVS 2.7 or later (Ubuntu 14 ships with 2.0.2, which is not supported)
+ * OVS 2.3.1 or later (Ubuntu 14 ships with 2.0.2, which is not supported)
  * VLAN utils (vconfig, et al - on Ubuntu, apt-get install vlan)
  * fuser
  * net-tools
@@ -23,7 +23,6 @@
  * pylint
  * curl
  * ladvd
- * iperf
 """
 
 import collections
@@ -88,8 +87,6 @@ EXTERNAL_DEPENDENCIES = (
      r'curl (\d+\.\d+).\d+', "7.3"),
     ('ladvd', ['-h'], 'ladvd',
      r'ladvd version (\d+\.\d+)\.\d+', "1.1"),
-    ('iperf', ['--version'], 'iperf',
-     r'iperf version (\d+\.\d+)\.\d+', "2.0"),
 )
 
 # Must pass with 0 lint errors
@@ -104,7 +101,6 @@ MAX_PARALLEL_TESTS = 4
 
 # see hw_switch_config.yaml for how to bridge in an external hardware switch.
 HW_SWITCH_CONFIG_FILE = 'hw_switch_config.yaml'
-CONFIG_FILE_DIRS = ['/etc/ryu/faucet', './']
 REQUIRED_TEST_PORTS = 4
 
 
@@ -239,6 +235,7 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
         self.net.start()
         if self.hw_switch:
             self.attach_physical_switch()
+        self.net.waitConnected()
         self.wait_debug_log()
         self.wait_until_matching_flow('OUTPUT:CONTROLLER')
         dumpNodeConnections(self.net.hosts)
@@ -248,10 +245,8 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
         intf = tcpdump_host.intf().name
         if root_intf:
             intf = intf.split('.')[0]
-        tcpdump_cmd = self.timeout_soft_cmd(
-            'tcpdump -i %s -e -n -U -v -c %u %s' % (
-                intf, packets, tcpdump_filter),
-            timeout)
+        tcpdump_cmd = 'timeout %us tcpdump -i %s -e -n -U -v -c %u %s' % (
+            timeout, intf, packets, tcpdump_filter)
         tcpdump_out = tcpdump_host.popen(tcpdump_cmd, stderr=subprocess.STDOUT)
         popens = {tcpdump_host: tcpdump_out}
         tcpdump_started = False
@@ -286,9 +281,7 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
         first_host, second_host = self.net.hosts[0:2]
         lldp_filter = 'ether proto 0x88cc'
         ladvd_mkdir = 'mkdir -p /var/run/ladvd'
-        send_lldp = '%s -L -o %s' % (
-            self.timeout_cmd(self.LADVD, 30),
-            second_host.defaultIntf())
+        send_lldp = '%s -L -o %s' % (self.LADVD, second_host.defaultIntf())
         tcpdump_txt = self.tcpdump_helper(
             first_host, lldp_filter,
             [lambda: second_host.cmd(ladvd_mkdir),
@@ -304,9 +297,7 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
         first_host, second_host = self.net.hosts[0:2]
         cdp_filter = 'ether host 01:00:0c:cc:cc:cc and ether[20:2]==0x2000'
         ladvd_mkdir = 'mkdir -p /var/run/ladvd'
-        send_cdp = '%s -C -o %s' % (
-            self.timeout_cmd(self.LADVD, 30),
-            second_host.defaultIntf())
+        send_cdp = '%s -C -o %s' % (self.LADVD, second_host.defaultIntf())
         tcpdump_txt = self.tcpdump_helper(
             first_host,
             cdp_filter,
@@ -353,11 +344,10 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
             'echo "eapol_version=2\nap_scan=0\nnetwork={\n'
             'key_mgmt=IEEE8021X\neap=MD5\nidentity=\\"login\\"\n'
             'password=\\"password\\"\n}\n" > %s' % tmp_eap_conf)
-        wpa_supplicant_cmd = self.timeout_cmd(
-            'wpa_supplicant -c%s -Dwired -i%s -d' % (
+        wpa_supplicant_cmd = (
+            'timeout 5s wpa_supplicant -c%s -Dwired -i%s -d' % (
                 tmp_eap_conf,
-                first_host.defaultIntf().name),
-            5)
+                first_host.defaultIntf().name))
         tcpdump_txt = self.tcpdump_helper(
             mirror_host, tcpdump_filter, [
                 lambda: first_host.cmd(eap_conf_cmd),
@@ -381,8 +371,8 @@ class FaucetTest(faucet_mininet_test_base.FaucetTestBase):
                 continue
             self.fail(
                 'gauge did not output %s (gauge not connected?)' % watcher_file)
-        self.verify_no_exception('FAUCET_EXCEPTION_LOG')
-        self.verify_no_exception('GAUGE_EXCEPTION_LOG')
+        self.assertEquals(
+            0, os.path.getsize(os.environ['FAUCET_EXCEPTION_LOG']))
 
     def prometheus_smoke_test(self):
         prom_out = self.scrape_prometheus()
@@ -520,7 +510,8 @@ class FaucetUntaggedInfluxTest(FaucetUntaggedTest):
 
     def test_untagged_influx_down(self):
         self.ping_all_when_learned()
-        self.verify_no_exception('FAUCET_EXCEPTION_LOG')
+        self.assertEquals(
+            0, os.path.getsize(os.environ['FAUCET_EXCEPTION_LOG']))
 
     def test_untagged(self):
 
@@ -977,8 +968,8 @@ vlans:
                 second_host, first_host.IP(),
                 require_host_learned=False, intf=mac_intf)
 
-        self.are_hosts_learnt(learned_macs)
-'''
+        self.are_hosts_learnt(learned_macs)'''
+
 
 class FaucetLearn50MACsOnPortTest(FaucetUntaggedTest):
 
@@ -1041,14 +1032,7 @@ class FaucetUntaggedHUPTest(FaucetUntaggedTest):
             self.verify_hup_faucet()
             configure_count = self.get_configure_count()
             self.assertTrue(i + 1, configure_count)
-            self.assertEqual(
-                int(self.scrape_prometheus_var(
-                    r'of_dp_disconnections{dpid="0x%x"}' % long(self.dpid), 0)),
-                0)
-            self.assertEqual(
-                int(self.scrape_prometheus_var(
-                    r'of_dp_connections{dpid="0x%x"}' % long(self.dpid), 0)),
-                1)
+            self.assertTrue(switch.connected())
             self.wait_until_matching_flow('OUTPUT:CONTROLLER')
             self.ping_all_when_learned()
 
@@ -1248,7 +1232,7 @@ group test {
         # wait until 10.0.0.1 has been resolved
         self.wait_for_route_as_flow(
             first_host.MAC(), ipaddress.IPv4Network(u'10.99.99.0/24'))
-        self.wait_bgp_up('127.0.0.1', 100)
+        self.wait_bgp_up(self.exabgp_log)
         self.wait_exabgp_sent_updates(self.exabgp_log)
         self.verify_invalid_bgp_route('10.0.0.4/24 cannot be us')
         self.verify_invalid_bgp_route('10.0.0.5/24 is not a connected network')
@@ -1330,7 +1314,7 @@ group test {
         self.verify_ipv4_routing_mesh()
         self.flap_all_switch_ports()
         self.verify_ipv4_routing_mesh()
-        self.wait_bgp_up('127.0.0.1', 100)
+        self.wait_bgp_up(self.exabgp_log)
         # exabgp should have received our BGP updates
         updates = self.exabgp_updates(self.exabgp_log)
         self.stop_exabgp()
@@ -1372,13 +1356,13 @@ vlans:
 """
 
     def test_untagged(self):
+        self.assertTrue(self.bogus_mac_flooded_to_port1())
         # Unicast flooding rule for from port 1
         self.assertTrue(self.matching_flow_present(
             '"table_id": 7, "match": {"dl_vlan": "100", "in_port": %(port_1)d}' % self.port_map))
         # Unicast flood rule exists that output to port 1
         self.assertTrue(self.matching_flow_present(
             '"OUTPUT:%(port_1)d".+"table_id": 7, "match": {"dl_vlan": "100", "in_port": .+}' % self.port_map))
-        self.assertTrue(self.bogus_mac_flooded_to_port1())
 
 
 class FaucetUntaggedNoVLanUnicastFloodTest(FaucetUntaggedTest):
@@ -1407,13 +1391,13 @@ vlans:
 """
 
     def test_untagged(self):
+        self.assertFalse(self.bogus_mac_flooded_to_port1())
         # No unicast flooding rule for from port 1
         self.assertFalse(self.matching_flow_present(
             '"table_id": 7, "match": {"dl_vlan": "100", "in_port": %(port_1)d}' % self.port_map))
         # No unicast flood rule exists that output to port 1
         self.assertFalse(self.matching_flow_present(
             '"OUTPUT:%(port_1)d".+"table_id": 7, "match": {"dl_vlan": "100", "in_port": .+}' % self.port_map))
-        self.assertFalse(self.bogus_mac_flooded_to_port1())
 
 
 class FaucetUntaggedPortUnicastFloodTest(FaucetUntaggedTest):
@@ -1443,15 +1427,15 @@ vlans:
 """
 
     def test_untagged(self):
+        # VLAN level config to disable flooding takes precedence,
+        # cannot enable port-only flooding.
+        self.assertFalse(self.bogus_mac_flooded_to_port1())
         # No unicast flooding rule for from port 1
         self.assertFalse(self.matching_flow_present(
             '"table_id": 7, "match": {"dl_vlan": "100", "in_port": %(port_1)d}' % self.port_map))
         # No unicast flood rule exists that output to port 1
         self.assertFalse(self.matching_flow_present(
             '"OUTPUT:%(port_1)d".+"table_id": 7, "match": {"dl_vlan": "100", "in_port": .+}' % self.port_map))
-        # VLAN level config to disable flooding takes precedence,
-        # cannot enable port-only flooding.
-        self.assertFalse(self.bogus_mac_flooded_to_port1())
 
 
 class FaucetUntaggedNoPortUnicastFloodTest(FaucetUntaggedTest):
@@ -1481,6 +1465,7 @@ vlans:
 """
 
     def test_untagged(self):
+        self.assertFalse(self.bogus_mac_flooded_to_port1())
         # Unicast flood rule present for port 2, but NOT for port 1
         self.assertTrue(self.matching_flow_present(
             '"table_id": 7, "match": {"dl_vlan": "100", "in_port": %(port_2)d}' % self.port_map))
@@ -1491,7 +1476,6 @@ vlans:
             '"OUTPUT:%(port_2)d".+"table_id": 7, "match": {"dl_vlan": "100", "in_port": .+}' % self.port_map))
         self.assertFalse(self.matching_flow_present(
             '"OUTPUT:%(port_1)d".+"table_id": 7, "match": {"dl_vlan": "100", "in_port": .+}' % self.port_map))
-        self.assertFalse(self.bogus_mac_flooded_to_port1())
 
 
 class FaucetUntaggedHostMoveTest(FaucetUntaggedTest):
@@ -2332,7 +2316,7 @@ group test {
         self.exabgp_log = self.start_exabgp(self.exabgp_conf, '::1')
 
     def test_untagged(self):
-        self.wait_bgp_up('::1', 100)
+        self.wait_bgp_up(self.exabgp_log)
         self.wait_exabgp_sent_updates(self.exabgp_log)
         self.verify_invalid_bgp_route('fc00::40:1/112 cannot be us')
         self.verify_invalid_bgp_route('fc00::50:1/112 is not a connected network')
@@ -2469,7 +2453,7 @@ group test {
         self.wait_for_route_as_flow(
             second_host.MAC(), ipaddress.IPv6Network(u'fc00::30:0/112'))
         self.verify_ipv6_routing_mesh()
-        self.wait_bgp_up('::1', 100)
+        self.wait_bgp_up(self.exabgp_log)
         updates = self.exabgp_updates(self.exabgp_log)
         self.stop_exabgp()
         assert re.search('fc00::1:0/112 next-hop fc00::1:254', updates)
@@ -3112,10 +3096,7 @@ acls:
                 description: "b2"
             %(port_3)d:
                 native_vlan: 100
-                description: "b3"
-            %(port_4)d:
-                native_vlan: 100
-                description: "b4"
+                decsciption: "b3"
 """
 
     def test_untagged(self):
@@ -3175,33 +3156,24 @@ acls:
 
 def import_hw_config():
     """Import configuration for physical switch testing."""
-    for config_file_dir in CONFIG_FILE_DIRS:
-        config_file_name = os.path.join(config_file_dir, HW_SWITCH_CONFIG_FILE)
-        if os.path.isfile(config_file_name):
-            break
-    if os.path.isfile(config_file_name):
-        print('Using config from %s' % config_file_name)
-    else:
-        print('Cannot find %s in %s' % (HW_SWITCH_CONFIG_FILE, CONFIG_FILE_DIRS))
-        sys.exit(-1)
     try:
-        with open(config_file_name, 'r') as config_file:
+        with open(HW_SWITCH_CONFIG_FILE, 'r') as config_file:
             config = yaml.load(config_file)
     except:
-        print('Could not load YAML config data from %s' % config_file_name)
+        print('Could not load YAML config data from %s' % HW_SWITCH_CONFIG_FILE)
         sys.exit(-1)
     if 'hw_switch' in config and config['hw_switch']:
         required_config = ('dp_ports', 'cpn_intf', 'dpid', 'of_port', 'gauge_of_port')
         for required_key in required_config:
             if required_key not in config:
                 print('%s must be specified in %s to use HW switch.' % (
-                    required_key, config_file_name))
+                    required_key, HW_SWITCH_CONFIG_FILE))
                 sys.exit(-1)
         dp_ports = config['dp_ports']
         if len(dp_ports) != REQUIRED_TEST_PORTS:
             print('Exactly %u dataplane ports are required, '
                   '%d are provided in %s.' %
-                  (REQUIRED_TEST_PORTS, len(dp_ports), config_file_name))
+                  (REQUIRED_TEST_PORTS, len(dp_ports), HW_SWITCH_CONFIG_FILE))
         return config
     else:
         return None
