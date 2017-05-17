@@ -21,8 +21,6 @@ import logging
 import time
 import os
 
-import lockfile
-
 from collections import namedtuple
 
 import aruba.aruba_pipeline as aruba
@@ -892,7 +890,7 @@ class Valve(object):
         # system upon re/learning a host.
         ofmsgs.extend(self.host_manager.learn_host_on_vlan_port(
             learn_port, pkt_meta.vlan, pkt_meta.eth_src))
-        self._write_mac_port_file(pkt_meta.eth_src, valves[dp_id].dp.name, learn_port)
+
         # Add FIB entries, if routing is active.
         for route_manager in (
                 self.ipv4_route_manager, self.ipv6_route_manager):

@@ -436,6 +436,7 @@ class Faucet(app_manager.RyuApp):
             ryu_event (ryu.controller.event.EventReplyBase): triggering event.
         """
         new_config_file = os.getenv('FAUCET_CONFIG', self.config_file)
+        conf_fd = lockfile.lock(new_config_file, os.O_RDWR)
         if self._config_changed(new_config_file):
             self.config_file = new_config_file
             self.config_hashes, new_dps = dp_parser(
@@ -451,6 +452,7 @@ class Faucet(app_manager.RyuApp):
         else:
             self.logger.info('configuration is unchanged, not reloading')
         # pylint: disable=no-member
+        lockfile.unlock(conf_fd)
         self.metrics.faucet_config_reload_requests.inc()
 
     @set_ev_cls(EventFaucetResolveGateways, MAIN_DISPATCHER)

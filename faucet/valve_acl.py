@@ -16,7 +16,6 @@
 # limitations under the License.
 
 import valve_of
-from collections import OrderedDict
 
 
 def rewrite_vlan(output_dict):
@@ -87,5 +86,7 @@ def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
             match_dict[attrib] = attrib_value
     if port_num is not None:
         match_dict['in_port'] = port_num
+    if vlan_vid is not None:
+        match_dict['vlan_vid'] = valve_of.vid_present(vlan_vid)
     acl_match = valve_of.match_from_dict(match_dict)
     return acl_match, acl_inst

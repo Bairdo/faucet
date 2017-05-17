@@ -30,6 +30,7 @@ class Port(Conf):
     acl_in = None
     stack = {}
     max_hosts = None
+    mode = None
 
     defaults = {
         'number': None,
@@ -45,6 +46,7 @@ class Port(Conf):
         'acl_in': None,
         'stack': None,
         'max_hosts' : None,
+        'mode': None,
         }
 
     def __init__(self, _id, conf=None):
