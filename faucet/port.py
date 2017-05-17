@@ -62,6 +62,7 @@ class Port(Conf):
         self._set_default('name', str(self._id))
         self._set_default('description', self.name)
         self._set_default('tagged_vlans', [])
+        self._set_default('mode', self.mode)
 
     @property
     def phys_up(self):

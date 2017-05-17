@@ -48,6 +48,7 @@ from ryu.lib.packet import vlan as ryu_vlan
 from ryu.ofproto import ether
 from ryu.services.protocols.bgp.bgpspeaker import BGPSpeaker
 
+import lockfile
 
 class FaucetMetrics(object):
     """Container class for objects that can be exported to Prometheus."""
