@@ -7,3 +7,4 @@ numpy
 prometheus_client
 pyyaml
 ryu>=4.9
+ruamel.yaml
