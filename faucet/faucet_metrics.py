@@ -45,4 +45,9 @@ class FaucetMetrics(object):
             'learned_macs',
             'max address stored as 64bit number to DP ID, port, VLAN, and n (maximum number of hosts on the port)',
             ['dpid', 'port', 'vlan', 'n'])
+        self.dp_port_mode = Gauge(
+            'dp_port_mode',
+            'Mode of port stored as a 64 bit number',
+            ['dpid', 'port'])
+
         start_http_server(prom_port)

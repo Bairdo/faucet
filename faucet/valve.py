@@ -1001,6 +1001,13 @@ class Valve(object):
             dpid=hex(self.dp.dp_id), name='flood').set(
                 self.dp.flood_table)
 
+        for port_num, port in self.dp.ports.items():
+            if port.mode == 'access':
+                mode = 1
+            else:
+                mode = 0
+            metrics.dp_port_mode.labels(dpid=hex(self.dp.dp_id), port=port_num).set(mode)
+
     def update_metrics(self, metrics):
         """Update gauge/metrics.
 
