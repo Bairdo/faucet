@@ -117,7 +117,8 @@ class Valve(object):
             self.dp.group_table)
         self.host_manager = valve_host.ValveHostManager(
             self.logger, self.dp.eth_src_table, self.dp.eth_dst_table,
-            self.dp.timeout, self.dp.low_priority, self.dp.highest_priority,
+            self.dp.timeout, self.dp.learn_jitter, self.dp.learn_ban_timeout,
+            self.dp.low_priority, self.dp.highest_priority,
             self.valve_in_match, self.valve_flowmod, self.valve_flowdel,
             self.valve_flowdrop)
 
@@ -1005,11 +1006,36 @@ class Valve(object):
 
         metrics (FaucetMetrics or None): container of Prometheus metrics.
         """
+        # Clear the exported MAC learning.
+        for _, label_dict, _ in metrics.learned_macs.collect()[0].samples:
+            if int(label_dict['dpid'], 16) == self.dp.dp_id:
+                metrics.learned_macs.labels(
+                    dpid=label_dict['dpid'], vlan=label_dict['vlan'],
+                    port=label_dict['port'], n=label_dict['n']).set(0)
+
+        dpid = hex(self.dp.dp_id)
         for vlan in list(self.dp.vlans.values()):
             hosts_count = self.host_manager.hosts_learned_on_vlan_count(
                 vlan)
             metrics.vlan_hosts_learned.labels(
-                dpid=hex(self.dp.dp_id), vlan=vlan.vid).set(hosts_count)
+                dpid=dpid, vlan=vlan.vid).set(hosts_count)
+            metrics.vlan_neighbors.labels(
+                dpid=dpid, vlan=vlan.vid, ipv='4').set(len(vlan.arp_cache))
+            metrics.vlan_neighbors.labels(
+                dpid=dpid, vlan=vlan.vid, ipv='6').set(len(vlan.nd_cache))
+            # Repopulate MAC learning.
+            hosts_on_port = {}
+            for eth_src, host_cache_entry in sorted(list(vlan.host_cache.items())):
+                port_num = str(host_cache_entry.port_num)
+                mac_int = int(eth_src.replace(':', ''), 16)
+                if port_num not in hosts_on_port:
+                    hosts_on_port[port_num] = []
+                hosts_on_port[port_num].append(mac_int)
+            for port_num, hosts in list(hosts_on_port.items()):
+                for n, mac_int in enumerate(hosts):
+                    metrics.learned_macs.labels(
+                        dpid=dpid, vlan=vlan.vid,
+                        port=port_num, n=n).set(mac_int)
 
     def rcv_packet(self, dp_id, valves, in_port, vlan_vid, pkt):
         """Handle a packet from the dataplane (eg to re/learn a host).
