@@ -207,56 +207,21 @@ def _watcher_parser_v2(conf, logname):
     return result
 
 
-def write_acls_file(acls, filename):
+def write_yaml_file(yaml_, filename):
     """Overwrites the specified (in data) configurations.
     :param top_level the name of the top level dict e.g. 'acls', 'dps', ...
     :param data list of LocusCommentedMap object to overwrite part of the current config.
         The top map object specifies the config_file.
     """
-
-    # TODO this assumes that the top level structure wont be changed and only a sub structure.
-    # might want to add so all acls can be written, etc. and that the 2nd level structures do not
-    # share the same name with another 2nd level, even if different parent.
-
-
-    # 'i' will be a LocusCommentMap with the acl or dp. i.conf_file is the file for all its children. 
-    # for each second level structure
-
-        # dump yaml
-    yaml.dump(acls, open(filename, 'w'), default_flow_style=False) 
-
-
-def load_acl(config_path, switchname, switchport):
-    """Loads the acl as specified by the acl_in field on switchname switchport.
-    Both of switchname and switch must be specified.
-    :param config_path path to yaml configuration file to load.
-    :param switchname name of switch/datapath.
-    :param switchport the port of switchname.
-    :return tuple of dp name and dict-like config object.
-    """
- 
-    top_conf = load_top_conf(config_path)
-    
-    acls = top_conf["acls"]
-    dps = top_conf["dps"]
-
-    acl_in = dps[switchname]["interfaces"][switchport]["acl_in"]
-
-    acl_map = acls[acl_in]
-    if acl_map is not None:
-        print("acl_in {}, acl_map {}".format(acl_in, acl_map))
-        return acl_in, acl_map
-
-    raise NotInYAMLError("Cannot find acl with dp named: {}, and port: {} in config file {}".format(switchname, switchport, config_path))
+    yaml.dump(yaml_, open(filename, 'w'), default_flow_style=False) 
 
 
 def load_acls(config_path):
-    """Loads all acls across all files in config_path (include/include-optional)
-    :param config_path path to yaml configuration file to load.
+    """Loads the file that contains the acls. can only be one file.
+    :param config_path path to the acl yaml configuration file to load.
     :return dict of <name, LocusCommentedMap>
     """
     return yaml.load(open(config_path,'r'))
-#    return load_top_conf(config_path)["acls"]
     
 
 def load_dp(config_path, switchname=None, dp_id=None):
