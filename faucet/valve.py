@@ -1161,8 +1161,8 @@ class Valve(object):
         for vid, new_vlan in list(new_dp.vlans.items()):
             if vid not in self.dp.vlans or new_vlan != self.dp.vlans[vid]:
                 changed_vlans.add(vid)
-            for port in new_vlan.get_ports():
-                changed_ports.add(port.number)
+                for port in new_vlan.get_ports():
+                    changed_ports.add(port.number)
 
         deleted_ports = set([])
         for port_no in list(self.dp.ports.keys()):
