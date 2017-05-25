@@ -109,6 +109,18 @@ class DistConfigTestCase(unittest.TestCase):
     def test_port_numbers(self):
         self.assertEqual(set(self.v2_dp.ports.keys()), set([1, 2, 3, 4, 5, 6, 7]))
 
+    def test_port_mode(self):
+        access_mode = set()
+        no_mode = set() 
+        for port in list(self.v2_dp.ports.items()):
+            if port[1].auth_mode == 'access':
+                access_mode.add(port[0])
+            if port[1].auth_mode == None:
+                no_mode.add(port[0])
+        self.assertEqual(set([1,4,5]), access_mode)
+        self.assertEqual(set([2,3,6,7]), no_mode)
+        
+
     def test_ports_vlans(self):
         for dp in (self.v2_dp,):
             # load ports for easy reading

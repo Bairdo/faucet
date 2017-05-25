@@ -1002,7 +1002,7 @@ class Valve(object):
                 self.dp.flood_table)
 
         for port_num, port in list(self.dp.ports.items()):
-            if port.mode == 'access':
+            if port.auth_mode == 'access':
                 mode = 1
             else:
                 mode = 0
