@@ -40,6 +40,8 @@ def build_acl_entry(rule_conf, acl_allow_inst, port_num=None, vlan_vid=None):
     acl_inst = []
     match_dict = {}
     for attrib, attrib_value in list(rule_conf.items()):
+        if attrib.startswith('_') and attrib.endswith('_'):
+            continue
         if attrib == 'in_port':
             continue
         if attrib == 'actions':
