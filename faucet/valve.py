@@ -1001,7 +1001,7 @@ class Valve(object):
             dpid=hex(self.dp.dp_id), name='flood').set(
                 self.dp.flood_table)
 
-        for port_num, port in self.dp.ports.items():
+        for port_num, port in list(self.dp.ports.items()):
             if port.mode == 'access':
                 mode = 1
             else:

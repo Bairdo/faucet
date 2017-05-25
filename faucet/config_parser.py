@@ -236,7 +236,7 @@ def load_dp(config_path, switchname=None, dp_id=None):
     if switchname is not None:
         return switchname, dps[switchname]
 
-    for name, com_map in dps.items():
+    for name, com_map in list(dps.items()):
         if dp_id is not None and com_map["dp_id"] == dp_id:
             return name, com_map
 
