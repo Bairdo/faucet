@@ -89,6 +89,7 @@ class Valve(object):
         self.ofchannel_logger = None
         self._packet_in_count_sec = 0
         self._last_packet_in_sec = 0
+        self._last_advertise_sec = 0
         self._register_table_match_types()
         # TODO: functional flow managers require too much state.
         # Should interface with a common composer class.
@@ -313,14 +314,17 @@ class Valve(object):
             idle_timeout)
 
     def valve_flowdel(self, table_id, match=None, priority=None,
-                      out_port=ofp.OFPP_ANY):
+                      out_port=ofp.OFPP_ANY, strict=False):
         """Delete matching flows from a table."""
+        command = ofp.OFPFC_DELETE
+        if strict:
+            command = ofp.OFPFC_DELETE_STRICT
         return [
             self.valve_flowmod(
                 table_id,
                 match=match,
                 priority=priority,
-                command=ofp.OFPFC_DELETE,
+                command=command,
                 out_port=out_port,
                 out_group=ofp.OFPG_ANY)]
 
@@ -554,6 +558,18 @@ class Valve(object):
         for port_num in all_port_nums:
             ofmsgs.extend(self.port_add(self.dp.dp_id, port_num))
 
+        return ofmsgs
+
+    def advertise(self):
+        """Called periodically to advertise services (eg. IPv6 RAs)."""
+        ofmsgs = []
+        now = time.time()
+        if (self.dp.advertise_interval and
+                now - self._last_advertise_sec > self.dp.advertise_interval):
+            for vlan in list(self.dp.vlans.values()):
+                ofmsgs.extend(
+                    self.ipv6_route_manager.advertise(vlan))
+            self._last_advertise_sec = now
         return ofmsgs
 
     def datapath_connect(self, dp_id, discovered_up_port_nums):
@@ -1306,4 +1322,5 @@ class ArubaValve(Valve):
         ryu_table_loader.load_tables(
             os.path.join(aruba.CFG_PATH, 'aruba_pipeline.json'), parser)
         ofmsgs = [valve_of.table_features(ryu_table_loader.ryu_tables)]
+        self.dpid_log('loading pipeline configuration')
         return ofmsgs

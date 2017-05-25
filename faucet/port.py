@@ -49,6 +49,8 @@ class Port(Conf):
         'stack': None,
         'max_hosts' : 255,
         'auth_mode': None,
+	#maximum number of hosts
+
         }
 
     def __init__(self, _id, conf=None):
@@ -68,7 +70,7 @@ class Port(Conf):
         self._set_default('description', self.name)
         self._set_default('tagged_vlans', [])
         # TODO do we want to convert auth_mode to integer/enum here?
-
+        self._set_default('auth_mode', None)
 
     @property
     def phys_up(self):
