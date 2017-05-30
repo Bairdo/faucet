@@ -1,0 +1,116 @@
+---
+vlans:
+    100:
+        description: "authentication"
+acls:
+    port1_1:
+        - rule:
+            actions:
+                allow: 1
+    port1_2:
+        - rule:
+            actions:
+                allow: 1
+    port_dp2_2:
+        - rule:
+            _name_: d1x
+            actions:
+                allow: 1
+                dl_dst: 70:6f:72:74:61:6c
+            dl_type: 34958
+        - rule:
+            _name_: redir41x
+            actions:
+                allow: 1
+                output:
+                    dl_dst: 70:6f:72:74:61:6c
+    port_dp2_3:
+        - rule:
+            _name_: d1x
+            actions:
+                allow: 1
+                dl_dst: 70:6f:72:74:61:6c
+            dl_type: 34958
+        - rule:
+            _name_: redir41x
+            actions:
+                allow: 1
+                output:
+                    dl_dst: 70:6f:72:74:61:6c
+    port_dp2_4:
+        - rule:
+            _name_: d1x
+            actions:
+                allow: 1
+                dl_dst: 70:6f:72:74:61:6c
+            dl_type: 34958
+        - rule:
+            _name_: redir41x
+            actions:
+                allow: 1
+                output:
+                    dl_dst: 70:6f:72:74:61:6c
+    port_dp2_5:
+        - rule:
+            _name_: d1x
+            actions:
+                allow: 1
+                dl_dst: 70:6f:72:74:61:6c
+            dl_type: 34958
+        - rule:
+            _name_: redir41x
+            actions:
+                allow: 1
+                output:
+                    dl_dst: 70:6f:72:74:61:6c
+
+
+dps:
+    dp1:
+        dp_id: 0x1
+        hardware: "Open vSwitch"
+        interfaces:
+            2:
+                name: portal
+                native_vlan: 100
+                acl_in: port1_1
+            3:
+                name: gateway
+                native_vlan: 100
+                acl_in: port1_2
+            1:
+                name: hosts
+                native_vlan: 100
+                acl_in: port1_2
+            4:
+                name: asljdhf
+                native_vlan: 100
+                acl_in: port1_2
+
+    dp2:
+        dp_id: 0x2
+        hardware: "Open vSwitch"
+        interfaces:
+            1:
+                name: p1
+                native_vlan: 100
+                acl_in: port1_2
+            2:
+                name: p2
+                native_vlan: 100
+                acl_in: port_dp2_2
+                auth_mode: access
+            3:
+                name: p3
+                native_vlan: 100
+                acl_in: port_dp2_3
+                auth_mode: access
+            4:
+                name: p4
+                native_vlan: 100
+                acl_in: port_dp2_4
+                auth_mode: access
+            5:
+                name: p5
+                native_vlan: 100
+                acl_in: port1_2
