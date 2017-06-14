@@ -32,6 +32,8 @@ def read_config(config_file, logname):
     except yaml.YAMLError as ex:
         logger.error('Error in file %s (%s)', config_file, str(ex))
         return None
+    logger.info('conf for file {} is: ...'.format(config_file))
+    logger.info(conf)
     return conf
 
 
@@ -57,8 +59,10 @@ def dp_include(config_hashes, config_file, logname, top_confs):
         logger.warning('error loading config from file: %s', config_file)
         return False
 
-    unknown_top_confs = (set(conf.keys()) -
-        set(list(top_confs.keys()) + ['include', 'include-optional', 'version']))
+    unknown_top_confs = (
+        set(conf.keys()) -
+        set(list(top_confs.keys()) +
+            ['include', 'include-optional', 'version']))
     if unknown_top_confs:
         logger.error('unknown top level config items: %s', unknown_top_confs)
         return False
@@ -101,3 +105,35 @@ def dp_include(config_hashes, config_file, logname, top_confs):
     for conf_name, new_conf in list(new_top_confs.items()):
         top_confs[conf_name].update(new_conf)
     return True
+
+
+def config_changed(config_file, new_config_file, config_hashes):
+    """Return True if configuration has changed.
+
+    Args:
+        config_file (str): name of FAUCET config file
+        new_config_file (str): name, possibly new, of FAUCET config file.
+        config_hashes (dict): map of config file/includes and hashes of contents.
+    Returns:
+        bool: True if the file, or any file it includes, has changed.
+    """
+    logger = get_logger('/tmp/configlogger')
+    if new_config_file != config_file:
+        return True
+    for config_file, config_hash in list(config_hashes.items()):
+        config_file_exists = os.path.isfile(config_file)
+        # Config file not loaded but exists = reload.
+        if config_hash is None and config_file_exists:
+            logger.info('Config file not loaded but exists = reload')
+            return True
+        # Config file loaded but no longer exists = reload.
+        if config_hash and not config_file_exists:
+            logger.info('Config file loaded but no longer exists = reload')
+            return True
+        # Config file hash has changed = reload.
+        new_config_hash = config_file_hash(config_file)
+        if new_config_hash != config_hash:
+            logger.info('Config file hash has changed = reload')
+            return True
+    logger.info('Config file is the same')
+    return False

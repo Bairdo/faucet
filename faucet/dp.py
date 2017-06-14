@@ -18,19 +18,16 @@ from conf import Conf
 from vlan import VLAN
 from port import Port
 from acl import ACL
-import valve_util
 
 import networkx
 
-"""
-Documentation generated using documentation_generator.py 
-For attributues to be included in documentation they must have a default value
-Their descriptor must come immediately after being set
-See below for example.
-"""
+# Documentation generated using documentation_generator.py
+# For attributues to be included in documentation they must
+# have a default value, and their descriptor must come
+# immediately after being set. See below for example.
 
 class DP(Conf):
-    """Object to hold the configuration for a faucet controlled datapath."""
+    """Implement FAUCET configuration for a datapath."""
 
     acls = None
     vlans = None
@@ -67,6 +64,8 @@ class DP(Conf):
     learn_jitter = None
     learn_ban_timeout = None
     advertise_interval = None
+    proactive_learn = None
+    pipeline_config_dir = None
 
     # Values that are set to None will be set using set_defaults
     # they are included here for testing and informational purposes
@@ -134,12 +133,15 @@ class DP(Conf):
         # When banning/limiting learning, wait this many seconds before learning can be retried
         'advertise_interval': 30,
         # How often to advertise (eg. IPv6 RAs)
+        'proactive_learn': True,
+        # whether proactive learning is enabled for IP nexthops
+        'pipeline_config_dir': '/etc/ryu/faucet',
+        # where config files for pipeline are stored (if any).
         }
 
     def __init__(self, _id, conf):
         """Constructs a new DP object"""
         self._id = _id
-        valve_util.check_unknown_conf(conf, self.defaults)
         self.update(conf)
         self.set_defaults()
         self.acls = {}
@@ -380,7 +382,7 @@ class DP(Conf):
         return result
 
     def to_conf(self):
-        result = self._to_conf()
+        result = super(DP, self).to_conf()
         if result is not None:
             if 'stack' in result:
                 if result['stack'] is not None:

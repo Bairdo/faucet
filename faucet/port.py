@@ -1,3 +1,5 @@
+"""Port configuration."""
+
 # Copyright (C) 2015 Brad Cowie, Christopher Lorier and Joe Stringer.
 # Copyright (C) 2015 Research and Education Advanced Network New Zealand Ltd.
 # Copyright (C) 2015--2017 The Contributors
@@ -15,10 +17,10 @@
 # limitations under the License.
 
 from conf import Conf
-import valve_util
 
 
 class Port(Conf):
+    """Implement FAUCET configuration for a port."""
 
     name = None
     number = None
@@ -49,15 +51,13 @@ class Port(Conf):
         'stack': None,
         'max_hosts' : 255,
         'auth_mode': None,
-	#maximum number of hosts
-
-        }
+        # maximum number of hosts
+    }
 
     def __init__(self, _id, conf=None):
         if conf is None:
             conf = {}
         self._id = _id
-        valve_util.check_unknown_conf(conf, self.defaults)
         self.update(conf)
         self.set_defaults()
         self.dyn_phys_up = False
@@ -84,7 +84,7 @@ class Port(Conf):
         return self.enabled and self.phys_up
 
     def to_conf(self):
-        result = self._to_conf()
+        result = super(Port, self).to_conf()
         if 'stack' in result and result['stack'] is not None:
             result['stack'] = {
                 'dp': str(self.stack['dp']),
@@ -92,18 +92,8 @@ class Port(Conf):
                 }
         return result
 
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-    def __hash__(self):
-        items = [(k, v) for k, v in list(self.__dict__.items()) if 'dyn' not in k]
-        return hash(frozenset(list(map(str, items))))
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def __str__(self):
         return self.name
 
     def __repr__(self):
-        return "Port %s" % self.number
+        return 'Port %s' % self.number

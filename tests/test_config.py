@@ -109,18 +109,6 @@ class DistConfigTestCase(unittest.TestCase):
     def test_port_numbers(self):
         self.assertEqual(set(self.v2_dp.ports.keys()), set([1, 2, 3, 4, 5, 6, 7]))
 
-    def test_port_mode(self):
-        access_mode = set()
-        no_mode = set() 
-        for port in list(self.v2_dp.ports.items()):
-            if port[1].auth_mode == 'access':
-                access_mode.add(port[0])
-            if port[1].auth_mode == None:
-                no_mode.add(port[0])
-        self.assertEqual(set([1,4,5]), access_mode)
-        self.assertEqual(set([2,3,6,7]), no_mode)
-        
-
     def test_ports_vlans(self):
         for dp in (self.v2_dp,):
             # load ports for easy reading
@@ -129,34 +117,36 @@ class DistConfigTestCase(unittest.TestCase):
             portcafef00d_3 = dp.ports[3]
             portcafef00d_4 = dp.ports[4]
             portcafef00d_5 = dp.ports[5]
+            vlan_40 = dp.vlans[40]
+            vlan_41 = dp.vlans[41]
             # check that the ports are in the right vlans
-            self.assertIn(portcafef00d_1, dp.vlans[40].tagged)
-            self.assertIn(portcafef00d_1, dp.vlans[41].tagged)
-            self.assertIn(portcafef00d_2, dp.vlans[40].untagged)
-            self.assertIn(portcafef00d_3, dp.vlans[40].untagged)
-            self.assertIn(portcafef00d_3, dp.vlans[41].tagged)
-            self.assertIn(portcafef00d_4, dp.vlans[41].untagged)
-            self.assertIn(portcafef00d_5, dp.vlans[41].untagged)
+            self.assertIn(portcafef00d_1, vlan_40.tagged)
+            self.assertIn(portcafef00d_1, vlan_41.tagged)
+            self.assertIn(portcafef00d_2, vlan_40.untagged)
+            self.assertIn(portcafef00d_3, vlan_40.untagged)
+            self.assertIn(portcafef00d_3, vlan_41.tagged)
+            self.assertIn(portcafef00d_4, vlan_41.untagged)
+            self.assertIn(portcafef00d_5, vlan_41.untagged)
             # check that the ports are not in vlans they should not be
-            self.assertNotIn(portcafef00d_1, dp.vlans[40].untagged)
-            self.assertNotIn(portcafef00d_1, dp.vlans[41].untagged)
-            self.assertNotIn(portcafef00d_2, dp.vlans[40].tagged)
-            self.assertNotIn(portcafef00d_2, dp.vlans[41].untagged)
-            self.assertNotIn(portcafef00d_2, dp.vlans[41].tagged)
-            self.assertNotIn(portcafef00d_3, dp.vlans[40].tagged)
-            self.assertNotIn(portcafef00d_3, dp.vlans[41].untagged)
-            self.assertNotIn(portcafef00d_4, dp.vlans[40].untagged)
-            self.assertNotIn(portcafef00d_4, dp.vlans[40].tagged)
-            self.assertNotIn(portcafef00d_4, dp.vlans[41].tagged)
-            self.assertNotIn(portcafef00d_5, dp.vlans[40].untagged)
-            self.assertNotIn(portcafef00d_5, dp.vlans[40].tagged)
-            self.assertNotIn(portcafef00d_5, dp.vlans[41].tagged)
+            self.assertNotIn(portcafef00d_1, vlan_40.untagged)
+            self.assertNotIn(portcafef00d_1, vlan_41.untagged)
+            self.assertNotIn(portcafef00d_2, vlan_40.tagged)
+            self.assertNotIn(portcafef00d_2, vlan_41.untagged)
+            self.assertNotIn(portcafef00d_2, vlan_41.tagged)
+            self.assertNotIn(portcafef00d_3, vlan_40.tagged)
+            self.assertNotIn(portcafef00d_3, vlan_41.untagged)
+            self.assertNotIn(portcafef00d_4, vlan_40.untagged)
+            self.assertNotIn(portcafef00d_4, vlan_40.tagged)
+            self.assertNotIn(portcafef00d_4, vlan_41.tagged)
+            self.assertNotIn(portcafef00d_5, vlan_40.untagged)
+            self.assertNotIn(portcafef00d_5, vlan_40.tagged)
+            self.assertNotIn(portcafef00d_5, vlan_41.tagged)
             # check get_native_vlan
             self.assertEquals(dp.get_native_vlan(1), None)
-            self.assertEquals(dp.get_native_vlan(2), dp.vlans[40])
-            self.assertEquals(dp.get_native_vlan(3), dp.vlans[40])
-            self.assertEquals(dp.get_native_vlan(4), dp.vlans[41])
-            self.assertEquals(dp.get_native_vlan(5), dp.vlans[41])
+            self.assertEquals(dp.get_native_vlan(2), vlan_40)
+            self.assertEquals(dp.get_native_vlan(3), vlan_40)
+            self.assertEquals(dp.get_native_vlan(4), vlan_41)
+            self.assertEquals(dp.get_native_vlan(5), vlan_41)
             self.assertEquals(dp.get_native_vlan(6), None)
 
     def test_only_one_untagged_vlan_per_port(self):
@@ -203,15 +193,15 @@ class DistConfigTestCase(unittest.TestCase):
             self.assertEquals(vlan.bgp_neighbor_as, 2)
             self.assertIn(
                 ipaddress.ip_network(u'10.0.1.0/24'),
-                vlan.ipv4_routes
+                vlan.routes_by_ipv(4)
                 )
             self.assertIn(
                 ipaddress.ip_network(u'10.0.2.0/24'),
-                vlan.ipv4_routes
+                vlan.routes_by_ipv(4)
                 )
             self.assertIn(
                 ipaddress.ip_network(u'10.0.3.0/24'),
-                vlan.ipv4_routes
+                vlan.routes_by_ipv(4)
                 )
 
     def test_port_acl(self):

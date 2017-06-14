@@ -1,3 +1,5 @@
+"""Manage host learning on VLANs."""
+
 # Copyright (C) 2013 Nippon Telegraph and Telephone Corporation.
 # Copyright (C) 2015 Brad Cowie, Christopher Lorier and Joe Stringer.
 # Copyright (C) 2015 Research and Education Advanced Network New Zealand Ltd.
@@ -49,7 +51,7 @@ class ValveHostManager(object):
         self.valve_flowdel = valve_flowdel
         self.valve_flowdrop = valve_flowdrop
 
-    def temp_ban_host_learning_on_port(self, port): 
+    def temp_ban_host_learning_on_port(self, port):
         return self.valve_flowdrop(
             self.eth_src_table,
             self.valve_in_match(self.eth_src_table, in_port=port.number),
@@ -65,7 +67,7 @@ class ValveHostManager(object):
 
     def build_port_out_inst(self, vlan, port):
         dst_act = []
-        if not vlan.port_is_tagged(port.number) and port.stack is None:
+        if not vlan.port_is_tagged(port) and port.stack is None:
             dst_act.append(valve_of.pop_vlan())
         dst_act.append(valve_of.output_port(port.number))
 
@@ -139,9 +141,9 @@ class ValveHostManager(object):
                 priority=(self.host_priority - 2)))
         else:
             # Add a jitter to avoid whole bunch of hosts timeout simultaneously
-            learn_timeout = max(abs(
+            learn_timeout = int(max(abs(
                 self.learn_timeout -
-                (self.learn_jitter / 2) + random.randint(0, self.learn_jitter)), 2)
+                (self.learn_jitter / 2) + random.randint(0, self.learn_jitter)), 2))
             ofmsgs.extend(self.delete_host_from_vlan(eth_src, vlan))
 
         # Update datapath to no longer send packets from this mac to controller

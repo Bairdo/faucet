@@ -1,3 +1,5 @@
+"""Implement configuration file parsing."""
+
 # Copyright (C) 2015 Brad Cowie, Christopher Lorier and Joe Stringer.
 # Copyright (C) 2015 Research and Education Advanced Network New Zealand Ltd.
 # Copyright (C) 2015--2017 The Contributors
@@ -20,15 +22,22 @@ from port import Port
 from vlan import VLAN
 from router import Router
 from watcher_conf import WatcherConf
-
+import os
 import yaml
 
 import config_parser_util
+
+V2_TOP_CONFS = (
+    'acls',
+    'dps',
+    'routers',
+    'vlans')
 
 
 def dp_parser(config_file, logname):
     logger = config_parser_util.get_logger(logname)
     conf = config_parser_util.read_config(config_file, logname)
+    logger.info('dp_parser')
     if conf is None:
         return None
     version = conf.pop('version', 2)
@@ -46,6 +55,7 @@ def dp_parser(config_file, logname):
             dp.resolve_stack_topology(dps)
     return config_hashes, dps
 
+
 def _get_vlan_by_identifier(dp_id, v_identifier, vlans):
     '''v_identifier can be a name or anything used to identify a vlan.
     v_identifier will be used as vid when vid is omitted in vlan config'''
@@ -54,7 +64,7 @@ def _get_vlan_by_identifier(dp_id, v_identifier, vlans):
         if v_identifier == vlan._id:
             vid = vlan.vid
             break
-    if type(vid) == str:
+    if isinstance(vid, str):
         try:
             vid = int(vid, 0)
         except:
@@ -72,10 +82,10 @@ def port_parser(dp_id, p_identifier, port_conf, vlans):
     if port.native_vlan is not None:
         v_identifier = port.native_vlan
         vlan = _get_vlan_by_identifier(dp_id, v_identifier, vlans)
-        vlan.untagged.append(port)
+        vlan.add_untagged(port)
     for v_identifier in port.tagged_vlans:
         vlan = _get_vlan_by_identifier(dp_id, v_identifier, vlans)
-        vlan.tagged.append(port)
+        vlan.add_tagged(port)
 
     return port
 
@@ -127,15 +137,15 @@ def _dp_parser_v2(logger, acls_conf, dps_conf, routers_conf, vlans_conf):
                 ports[port_num] = port
                 if port.native_vlan is not None:
                     vlan = vlans[port.native_vlan]
-                    port.native_vlan = vlan.vid
+                    port.native_vlan = vlan
                     _dp_add_vlan(vid_dp, dp, vlan)
                 if port.tagged_vlans is not None:
-                    tagged_vids = []
+                    tagged_vlans = []
                     for v_identifier in port.tagged_vlans:
                         vlan = vlans[v_identifier]
-                        tagged_vids.append(vlan.vid)
+                        tagged_vlans.append(vlan)
                         _dp_add_vlan(vid_dp, dp, vlan)
-                    port.tagged_vlans = tagged_vids
+                    port.tagged_vlans = tagged_vlans
         except AssertionError as err:
             logger.exception('Error in config file: %s', err)
             return None
@@ -151,12 +161,9 @@ def _config_parser_v2(config_file, logname):
     logger = config_parser_util.get_logger(logname)
     config_path = config_parser_util.dp_config_path(config_file)
     config_hashes = {}
-    top_confs = {
-        'acls': {},
-        'dps': {},
-        'routers': {},
-        'vlans': {},
-    }
+    top_confs = {}
+    for top_conf in V2_TOP_CONFS:
+        top_confs[top_conf] = {}
 
     if not config_parser_util.dp_include(
             config_hashes, config_path, logname, top_confs):
@@ -174,6 +181,18 @@ def _config_parser_v2(config_file, logname):
         top_confs['routers'],
         top_confs['vlans'])
     return (config_hashes, dps)
+
+
+def get_config_for_api(valves):
+    config = {}
+    for i in V2_TOP_CONFS:
+        config[i] = {}
+    for valve in list(valves.values()):
+        valve_conf = valve.get_config_dict()
+        for i in V2_TOP_CONFS:
+            if i in valve_conf:
+                config[i].update(valve_conf[i])
+    return config
 
 
 def watcher_parser(config_file, logname):
@@ -207,14 +226,19 @@ def _watcher_parser_v2(conf, logname):
     return result
 
 
-def write_yaml_file(yaml_, filename):
+def write_yaml_file(yaml_, filename, logger):
     """Overwrites the specified (in data) configurations.
     :param top_level the name of the top level dict e.g. 'acls', 'dps', ...
     :param data list of LocusCommentedMap object to overwrite part of the current config.
         The top map object specifies the config_file.
     """
-    yaml.dump(yaml_, open(filename, 'w'), default_flow_style=False) 
-
+    with open(filename, 'w') as f:
+        yaml.dump(yaml_, f, default_flow_style=False)
+        logger.info('written yaml file')
+        f.flush()
+        logger.info('flushed yaml file')
+        os.fsync(f.fileno())
+        logger.info('fsync-ed yaml file')
 
 def load_acls(config_path):
     """Loads the file that contains the acls. can only be one file.
