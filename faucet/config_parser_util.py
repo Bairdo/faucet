@@ -117,23 +117,18 @@ def config_changed(config_file, new_config_file, config_hashes):
     Returns:
         bool: True if the file, or any file it includes, has changed.
     """
-    logger = get_logger('/tmp/configlogger')
     if new_config_file != config_file:
         return True
     for config_file, config_hash in list(config_hashes.items()):
         config_file_exists = os.path.isfile(config_file)
         # Config file not loaded but exists = reload.
         if config_hash is None and config_file_exists:
-            logger.info('Config file not loaded but exists = reload')
             return True
         # Config file loaded but no longer exists = reload.
         if config_hash and not config_file_exists:
-            logger.info('Config file loaded but no longer exists = reload')
             return True
         # Config file hash has changed = reload.
         new_config_hash = config_file_hash(config_file)
         if new_config_hash != config_hash:
-            logger.info('Config file hash has changed = reload')
             return True
-    logger.info('Config file is the same')
     return False

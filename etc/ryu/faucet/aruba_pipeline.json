@@ -3208,7 +3208,7 @@
                         "name": "ipv4_src",
                         "type": "ipv4_src"
                     },
-                   {
+                    {
                         "name": "ipv4_dst",
                         "type": "ipv4_dst"
                     },
@@ -3328,7 +3328,7 @@
                 "name": "OFPTFPT_WILDCARDS",
                 "oxm_ids": [
                     {
-                        "name": "eth_,
+                        "name": "eth_dst",
                         "type": "eth_dst"
                     },
                     {
@@ -3443,7 +3443,8 @@
                         "type": 22
                     },
                     {
-                        "name": "OFPAT_SE": 23
+                        "name": "OFPAT_SET_NW_TTL",
+                        "type": 23
                     },
                     {
                         "name": "OFPAT_SET_FIELD",
@@ -3557,7 +3558,14 @@
                         "type": "udp_src"
                     },
                     {
-                   E_SETFIELD_MISS",
+                        "name": "udp_dst",
+                        "type": "udp_dst"
+                    }
+                ],
+                "type": 12
+            },
+            {
+                "name": "OFPTFPT_WRITE_SETFIELD_MISS",
                 "oxm_ids": [
                     {
                         "name": "eth_dst",
@@ -3669,7 +3677,10 @@
                     },
                     {
                         "name": "vlan_vid",
-                                      "name": "vlan_pcp",
+                        "type": "vlan_vid"
+                    },
+                    {
+                        "name": "vlan_pcp",
                         "type": "vlan_pcp"
                     },
                     {

@@ -235,8 +235,8 @@ def write_yaml_file(yaml_, filename, logger):
     with open(filename, 'w') as f:
         yaml.dump(yaml_, f, default_flow_style=False)
         logger.info('written yaml file')
-        f.flush()
-        logger.info('flushed yaml file')
+#        f.flush()
+#        logger.info('flushed yaml file')
         os.fsync(f.fileno())
         logger.info('fsync-ed yaml file')
 
