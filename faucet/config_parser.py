@@ -16,16 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from acl import ACL
-from dp import DP
-from port import Port
-from vlan import VLAN
-from router import Router
-from watcher_conf import WatcherConf
-import os
-import yaml
+try:
+    from acl import ACL
+    from dp import DP
+    from port import Port
+    from vlan import VLAN
+    from router import Router
+    from watcher_conf import WatcherConf
+    import config_parser_util
+except ImportError:
+    from faucet.acl import ACL
+    from faucet.dp import DP
+    from faucet.port import Port
+    from faucet.vlan import VLAN
+    from faucet.router import Router
+    from faucet.watcher_conf import WatcherConf
+    from faucet import config_parser_util
 
-import config_parser_util
 
 V2_TOP_CONFS = (
     'acls',
@@ -37,22 +44,23 @@ V2_TOP_CONFS = (
 def dp_parser(config_file, logname):
     logger = config_parser_util.get_logger(logname)
     conf = config_parser_util.read_config(config_file, logname)
-    logger.info('dp_parser')
-    if conf is None:
-        return None
-    version = conf.pop('version', 2)
-    if version != 2:
-        logger.fatal('Only config version 2 is supported')
+    config_hashes = None
+    dps = None
 
-    config_hashes, dps = _config_parser_v2(config_file, logname)
-    if dps is not None:
-        for dp in dps:
-            try:
-                dp.finalize_config(dps)
-            except AssertionError as err:
-                logger.exception('Error finalizing datapath configs: %s', err)
-        for dp in dps:
-            dp.resolve_stack_topology(dps)
+    if conf is not None:
+        version = conf.pop('version', 2)
+        if version != 2:
+            logger.fatal('Only config version 2 is supported')
+
+        config_hashes, dps = _config_parser_v2(config_file, logname)
+        if dps is not None:
+            for dp in dps:
+                try:
+                    dp.finalize_config(dps)
+                except AssertionError as err:
+                    logger.exception('Error finalizing datapath configs: %s', err)
+            for dp in dps:
+                dp.resolve_stack_topology(dps)
     return config_hashes, dps
 
 

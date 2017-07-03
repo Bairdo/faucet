@@ -23,16 +23,6 @@ import os
 import random
 import signal
 
-from config_parser import dp_parser, get_config_for_api
-from config_parser_util import config_changed
-from valve_util import dpid_log, get_logger, kill_on_exception, get_sys_prefix
-from valve import valve_factory
-import faucet_api
-import faucet_bgp
-import faucet_metrics
-import valve_packet
-import valve_of
-
 from ryu.base import app_manager
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import MAIN_DISPATCHER
@@ -42,7 +32,33 @@ from ryu.controller import event
 from ryu.controller import ofp_event
 from ryu.lib import hub
 
-import my_lockfile as lockfile
+
+
+
+try:
+    from config_parser import dp_parser, get_config_for_api
+    from config_parser_util import config_changed
+    from valve_util import dpid_log, get_logger, kill_on_exception, get_sys_prefix
+    from valve import valve_factory
+    import faucet_api
+    import faucet_bgp
+    import faucet_metrics
+    import valve_packet
+    import valve_of
+
+    import my_lockfile as lockfile
+except ImportError:
+    from faucet.config_parser import dp_parser, get_config_for_api
+    from faucet.config_parser_util import config_changed
+    from faucet.valve_util import dpid_log, get_logger, kill_on_exception, get_sys_prefix
+    from faucet.valve import valve_factory
+    from faucet import faucet_api
+    from faucet import faucet_bgp
+    from faucet import faucet_metrics
+    from faucet import valve_packet
+    from faucet import valve_of
+
+    from faucet import my_lockfile as lockfile
 
 class EventFaucetReconfigure(event.EventBase):
     """Event used to trigger FAUCET reconfiguration."""
@@ -147,6 +163,9 @@ class Faucet(app_manager.RyuApp):
         self.config_file = new_config_file
         self.config_hashes, new_dps = dp_parser(
             new_config_file, self.logname)
+        if new_dps is None:
+            self.logger.error('new config bad - rejecting')
+            return
         deleted_valve_dpids = (
             set(list(self.valves.keys())) -
             set([valve.dp_id for valve in new_dps]))
@@ -277,13 +296,14 @@ class Faucet(app_manager.RyuApp):
                 self._send_flow_msgs(dp_id, flowmods)
 
     @set_ev_cls(EventFaucetReconfigure, MAIN_DISPATCHER)
+    @kill_on_exception(exc_logname)
     def reload_config(self, _):
         """Handle a request to reload configuration."""
         self.logger.info('request to reload configuration')
         new_config_file = os.getenv('FAUCET_CONFIG', self.config_file)
         conf_fd = lockfile.lock(new_config_file, os.O_RDWR)
         if config_changed(self.config_file, new_config_file, self.config_hashes):
-            self.logger.info('configuration changed')
+            self.logger.info('configuration %s changed', new_config_file)
             self._load_configs(new_config_file)
         else:
             self.logger.info('configuration is unchanged, not reloading')
