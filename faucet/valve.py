@@ -1292,9 +1292,26 @@ class Valve(object):
                     vlan = self.dp.vlans[vid]
                     ofmsgs.extend(self._del_vlan(vlan))
                     ofmsgs.extend(self._add_vlan(vlan, set()))
+
             if changed_ports:
                 self.dpid_log('ports changed/added: %s' % changed_ports)
                 ofmsgs.extend(self.ports_add(self.dp.dp_id, changed_ports))
+
+                self.dpid_log('all_port_nums ' + str(changed_ports))
+                vlans = []
+                for port in changed_ports:
+                    p = self.dp.ports[port]
+                    vlans.append(p.native_vlan)
+                    vlans.extend(p.tagged_vlans)
+
+                for vlan in vlans:
+                    match = self.valve_in_match(self.dp.eth_src_table, vlan=vlan)
+                    self.dpid_log('remove matches %s from table 3' % match )
+                    msg = self.valve_flowdel(self.dp.eth_src_table, match=match)
+                    ofmsgs.extend(msg)
+                    for m in msg:
+                        self.dpid_log(str(m))
+
         return cold_start, ofmsgs
 
     def reload_config(self, new_dp):
