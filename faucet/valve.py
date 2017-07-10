@@ -416,6 +416,7 @@ class Valve(object):
         """Delete all flows that match an input port from all FAUCET tables."""
         ofmsgs = []
         for table_id in self._in_port_tables():
+            self.dpid_log('deleting all for port.number')
             in_port_match = self.valve_in_match(table_id, in_port=port.number)
             ofmsgs.extend(self.valve_flowdel(table_id, in_port_match))
         return ofmsgs
@@ -702,12 +703,12 @@ class Valve(object):
         ofmsgs.extend(self._delete_all_port_match_flows(port))
         ofmsgs.extend(self.valve_flowdel(
             self.dp.eth_dst_table, out_port=port.number))
-        if port.permanent_learn:
-            for eth_src in old_eth_srcs:
-                ofmsgs.extend(self.valve_flowdel(
-                    self.dp.eth_src_table,
-                    match=self.valve_in_match(
-                        self.dp.eth_src_table, eth_src=eth_src)))
+#        if port.permanent_learn:
+        for eth_src in old_eth_srcs:
+            ofmsgs.extend(self.valve_flowdel(
+                self.dp.eth_src_table,
+                match=self.valve_in_match(
+                    self.dp.eth_src_table, eth_src=eth_src)))
         return ofmsgs
 
     def ports_add(self, dp_id, port_nums, cold_start=False):
@@ -1279,7 +1280,16 @@ class Valve(object):
                     ofmsgs.extend(self._del_vlan(vlan))
 
             if changed_ports:
+                self.dpid_log('ports changed: %s' % changed_ports)
                 ofmsgs.extend(self.ports_delete(self.dp.dp_id, changed_ports))
+                vlans = set()
+                for port in changed_ports:
+                    p = self.dp.ports[port]
+                    if p.native_vlan:
+                        vlans.add(p.native_vlan.vid)
+                    for v in p.tagged_vlans:
+                        vlans.add(v.vid)
+                changed_vlans.update(vlans)
 
             self.dp = new_dp
             if changed_vlans:
@@ -1290,9 +1300,7 @@ class Valve(object):
                     ofmsgs.extend(self._add_vlan(vlan, set()))
 
             if changed_ports:
-                self.dpid_log('ports changed/added: %s' % changed_ports)
-                ofmsgs.extend(self.ports_add(self.dp.dp_id, changed_ports))
-
+                '''
                 self.dpid_log('all_port_nums ' + str(changed_ports))
                 vlans = []
                 for port in changed_ports:
@@ -1307,7 +1315,12 @@ class Valve(object):
                     ofmsgs.extend(msg)
                     for m in msg:
                         self.dpid_log(str(m))
+'''
+                self.dpid_log('ports changed/added: %s' % changed_ports)
+                ofmsgs.extend(self.ports_add(self.dp.dp_id, changed_ports))
+                
 
+                
         return cold_start, ofmsgs
 
     def reload_config(self, new_dp):
