@@ -5,4 +5,5 @@ networkx
 numpy
 prometheus_client
 pyyaml
+requests
 ryu==4.14
