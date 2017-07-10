@@ -164,10 +164,9 @@ class FakeOFTable():
             vid_stack = []
 
         instructions = self.lookup(match)
-        print('instructions: ')
+
         for instruction in instructions:
             if instruction.type == ofp.OFPIT_APPLY_ACTIONS:
-                print('Actions:')
                 for action in instruction.actions:
 
                     if action.type == ofp.OFPAT_PUSH_VLAN:
@@ -197,8 +196,6 @@ class FakeOFTable():
                             else:
                                 return\
                                     len(vid_stack) > 0 and vid == vid_stack[-1]
-                        else:
-                            print('action.port: ' + str(action.port) + ' != ' + 'port: ' + str(port))
 
         return False
 

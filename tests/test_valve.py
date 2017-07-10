@@ -706,7 +706,7 @@ vlans:
             'eth_dst': self.P2_V200_MAC,
             'vid': 0x200
             })
-        print('******* Running test: ' + self._testMethodName)
+
 
 if __name__ == "__main__":
     unittest.main()
