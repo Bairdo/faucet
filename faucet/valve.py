@@ -570,7 +570,6 @@ class Valve(object):
         ofmsgs.extend(self.ports_add(
             self.dp.dp_id, all_port_nums, cold_start=True))
 
-
         return ofmsgs
 
     def port_status_handler(self, dp_id, port_no, reason, port_status):
@@ -1230,7 +1229,6 @@ class Valve(object):
         if changed_ports == set(new_dp.ports.keys()):
             self.dpid_log('all ports config changed')
             all_ports_changed = True
-
         elif not changed_ports and not deleted_ports:
             self.dpid_log('no port config changes')
 
@@ -1277,7 +1275,6 @@ class Valve(object):
                 for vid in deleted_vlans:
                     vlan = self.dp.vlans[vid]
                     ofmsgs.extend(self._del_vlan(vlan))
-
             if changed_ports:
                 ofmsgs.extend(self.ports_delete(self.dp.dp_id, changed_ports))
                 vlans = set()
@@ -1296,7 +1293,6 @@ class Valve(object):
                     vlan = self.dp.vlans[vid]
                     ofmsgs.extend(self._del_vlan(vlan))
                     ofmsgs.extend(self._add_vlan(vlan, set()))
-
             if changed_ports:
                 self.dpid_log('ports changed/added: %s' % changed_ports)
                 ofmsgs.extend(self.ports_add(self.dp.dp_id, changed_ports))
