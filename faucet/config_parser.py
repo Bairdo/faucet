@@ -17,8 +17,8 @@
 # limitations under the License.
 
 
-import yaml
 import os
+import yaml
 
 try:
     from acl import ACL
@@ -244,12 +244,10 @@ def write_yaml_file(yaml_, filename, logger):
     :param data list of LocusCommentedMap object to overwrite part of the current config.
         The top map object specifies the config_file.
     """
-    with open(filename, 'w') as f:
-        yaml.dump(yaml_, f, default_flow_style=False)
+    with open(filename, 'w') as _file:
+        yaml.dump(yaml_, _file, default_flow_style=False)
         logger.info('written yaml file')
-#        f.flush()
-#        logger.info('flushed yaml file')
-        os.fsync(f.fileno())
+        os.fsync(_file.fileno())
         logger.info('fsync-ed yaml file')
 
 def load_acls(config_path):
@@ -257,8 +255,8 @@ def load_acls(config_path):
     :param config_path path to the acl yaml configuration file to load.
     :return dict of <name, LocusCommentedMap>
     """
-    return yaml.load(open(config_path,'r'))
-    
+    return yaml.load(open(config_path, 'r'))
+
 
 def load_dp(config_path, switchname=None, dp_id=None):
     """Loads a single datapath.
@@ -276,7 +274,8 @@ def load_dp(config_path, switchname=None, dp_id=None):
         if dp_id is not None and com_map["dp_id"] == dp_id:
             return name, com_map
 
-    raise NotInYAMLError("Cannot find dp named: {}, or dp id: {} in config file {}".format(switchname, dp_id, config_path))
+    raise NotInYAMLError("Cannot find dp named: {}, or dp id: {} in config file {}" \
+            .format(switchname, dp_id, config_path))
 
 
 def load_dps(config_path):
@@ -293,13 +292,13 @@ def load_top_conf(config_path):
     :param config_path path to yaml configuration file.
     :return dict of 4 main top level config LocusCommentedMap
     """
-    config_hashes = {} 
+    config_hashes = {}
     top_confs = {
-            "acls": {},
-            "dps": {},
-            "routers": {},
-            "vlans": {}
-            }
+        "acls": {},
+        "dps": {},
+        "routers": {},
+        "vlans": {}
+        }
     config_parser_util.dp_include(config_hashes, config_path, "loadtop", top_confs)
 
     return top_confs
