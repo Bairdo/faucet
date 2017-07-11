@@ -1278,12 +1278,12 @@ class Valve(object):
             if changed_ports:
                 ofmsgs.extend(self.ports_delete(self.dp.dp_id, changed_ports))
                 vlans = set()
-                for port in changed_ports:
-                    p = self.dp.ports[port]
-                    if p.native_vlan:
-                        vlans.add(p.native_vlan.vid)
-                    for v in p.tagged_vlans:
-                        vlans.add(v.vid)
+                for port_int in changed_ports:
+                    port = self.dp.ports[port_int]
+                    if port.native_vlan:
+                        vlans.add(port.native_vlan.vid)
+                    for vlan in port.tagged_vlans:
+                        vlans.add(vlan.vid)
                 changed_vlans.update(vlans)
 
             self.dp = new_dp
