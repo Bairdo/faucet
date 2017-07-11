@@ -32,8 +32,6 @@ def read_config(config_file, logname):
     except yaml.YAMLError as ex:
         logger.error('Error in file %s (%s)', config_file, str(ex))
         return None
-    logger.info('conf for file {} is: ...'.format(config_file))
-    logger.info(conf)
     return conf
 
 

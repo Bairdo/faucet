@@ -32,9 +32,6 @@ from ryu.controller import event
 from ryu.controller import ofp_event
 from ryu.lib import hub
 
-
-
-
 try:
     from config_parser import dp_parser, get_config_for_api
     from config_parser_util import config_changed
@@ -237,7 +234,6 @@ class Faucet(app_manager.RyuApp):
             sigid (int): signal to handle.
         """
         if sigid == signal.SIGHUP:
-            self.logger.info('sighup received')
             self.send_event('Faucet', EventFaucetReconfigure())
 
     def _thread_reschedule(self, ryu_event, period, jitter=2):
@@ -307,7 +303,7 @@ class Faucet(app_manager.RyuApp):
             self._load_configs(new_config_file)
         else:
             self.logger.info('configuration is unchanged, not reloading')
-        # pylint: disable=no-member 
+        # pylint: disable=no-member
         lockfile.unlock(conf_fd)
         self.metrics.faucet_config_reload_requests.inc()
 
@@ -431,7 +427,6 @@ class Faucet(app_manager.RyuApp):
             self.logger.error(
                 'handler_connect_or_disconnect: unknown %s', dpid_log(dp_id))
             ryu_dp.close()
-
 
     @set_ev_cls(dpset.EventDPReconnected, dpset.DPSET_EV_DISPATCHER)
     @kill_on_exception(exc_logname)
