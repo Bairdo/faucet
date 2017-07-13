@@ -393,6 +393,7 @@ class Faucet(app_manager.RyuApp):
             self._send_flow_msgs(dp_id, flowmods)
         else:
             self.logger.error('handler_datapath: unknown %s', dpid_log(dp_id))
+            ryu_dp.close()
 
     @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
     @kill_on_exception(exc_logname)
