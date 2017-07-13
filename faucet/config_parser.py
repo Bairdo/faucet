@@ -238,17 +238,15 @@ def _watcher_parser_v2(conf, logname):
     return result
 
 
-def write_yaml_file(yaml_, filename, logger):
-    """Overwrites the specified (in data) configurations.
-    :param top_level the name of the top level dict e.g. 'acls', 'dps', ...
-    :param data list of LocusCommentedMap object to overwrite part of the current config.
-        The top map object specifies the config_file.
+def write_yaml_file(yaml_, filename):
+    """Writes a yaml object to a file.
+    Args:
+        yaml_: object to be written.
+        filename (str): pathname.
     """
     with open(filename, 'w') as _file:
         yaml.dump(yaml_, _file, default_flow_style=False)
-        logger.info('written yaml file')
         os.fsync(_file.fileno())
-        logger.info('fsync-ed yaml file')
 
 def load_acls(config_path):
     """Loads the file that contains the acls. can only be one file.
@@ -261,10 +259,12 @@ def load_acls(config_path):
 def load_dp(config_path, switchname=None, dp_id=None):
     """Loads a single datapath.
     One of switchname or dp_id must be specified.
-    :param config_path path to yaml configuration file to load.
-    :param switchname name of switch/datapath to search for.
-    :param dp_id id of switch/datapath to search for.
-    :return tuple of dp name and dict-like config object.
+    Args:
+        config_path (str): path to yaml configuration file to load.
+        switchname (str): name of switch/datapath to search for.
+        dp_id: id of switch/datapath to search for.
+    Returns:
+        tuple of dp name and dict-like config object.
     """
     dps = load_dps(config_path)
     if switchname is not None:
@@ -280,8 +280,10 @@ def load_dp(config_path, switchname=None, dp_id=None):
 
 def load_dps(config_path):
     """Loads all datapaths across all files in config_path (include/include-optional)
-    :param config_path path to yaml configuration file to load.
-    :return dict of <name, LocusCommentedMap> e.g. s1 : LCM (dpid:10000, ...)
+    Args:
+        config_path (str): path to yaml configuration file to load.
+    Returns:
+        top level dps dict.
     """
     top = load_top_conf(config_path)
     return top["dps"]
@@ -289,8 +291,10 @@ def load_dps(config_path):
 
 def load_top_conf(config_path):
     """Loads the top level configuraions.
-    :param config_path path to yaml configuration file.
-    :return dict of 4 main top level config LocusCommentedMap
+    Args:
+        config_path (str): path to yaml configuration file.
+    Returns:
+        dict of 4 main top level configs
     """
     config_hashes = {}
     top_confs = {
