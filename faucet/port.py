@@ -80,6 +80,7 @@ class Port(Conf):
         'acl_in': (str, int),
         'stack': dict,
         'max_hosts': int,
+        'auth_mode': str,
         'hairpin': bool,
     }
 
