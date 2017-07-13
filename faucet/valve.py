@@ -721,6 +721,7 @@ class Valve(object):
         """
         if self._ignore_dpid(dp_id):
             return []
+
         ofmsgs = []
         vlans_with_ports_added = set()
 
