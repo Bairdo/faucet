@@ -247,12 +247,3 @@ def write_yaml_file(yaml_, filename):
     with open(filename, 'w') as _file:
         yaml.dump(yaml_, _file, default_flow_style=False)
         os.fsync(_file.fileno())
-
-def load_yaml_file(config_path):
-    """Loads the file that contains the acls. can only be one file.
-    Args:
-        config_path (str): path to the acl yaml configuration file to load.
-    Returns:
-        yaml object of all contents of config_path file.
-    """
-    return yaml.load(open(config_path, 'r'))
