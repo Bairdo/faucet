@@ -248,67 +248,11 @@ def write_yaml_file(yaml_, filename):
         yaml.dump(yaml_, _file, default_flow_style=False)
         os.fsync(_file.fileno())
 
-def load_acls(config_path):
+def load_yaml_file(config_path):
     """Loads the file that contains the acls. can only be one file.
-    :param config_path path to the acl yaml configuration file to load.
-    :return dict of <name, LocusCommentedMap>
+    Args:
+        config_path (str): path to the acl yaml configuration file to load.
+    Returns:
+        yaml object of all contents of config_path file.
     """
     return yaml.load(open(config_path, 'r'))
-
-
-def load_dp(config_path, switchname=None, dp_id=None):
-    """Loads a single datapath.
-    One of switchname or dp_id must be specified.
-    Args:
-        config_path (str): path to yaml configuration file to load.
-        switchname (str): name of switch/datapath to search for.
-        dp_id: id of switch/datapath to search for.
-    Returns:
-        tuple of dp name and dict-like config object.
-    """
-    dps = load_dps(config_path)
-    if switchname is not None:
-        return switchname, dps[switchname]
-
-    for name, com_map in list(dps.items()):
-        if dp_id is not None and com_map["dp_id"] == dp_id:
-            return name, com_map
-
-    raise NotInYAMLError("Cannot find dp named: {}, or dp id: {} in config file {}" \
-            .format(switchname, dp_id, config_path))
-
-
-def load_dps(config_path):
-    """Loads all datapaths across all files in config_path (include/include-optional)
-    Args:
-        config_path (str): path to yaml configuration file to load.
-    Returns:
-        top level dps dict.
-    """
-    top = load_top_conf(config_path)
-    return top["dps"]
-
-
-def load_top_conf(config_path):
-    """Loads the top level configuraions.
-    Args:
-        config_path (str): path to yaml configuration file.
-    Returns:
-        dict of 4 main top level configs
-    """
-    config_hashes = {}
-    top_confs = {
-        "acls": {},
-        "dps": {},
-        "routers": {},
-        "vlans": {}
-        }
-    config_parser_util.dp_include(config_hashes, config_path, "loadtop", top_confs)
-
-    return top_confs
-
-
-class NotInYAMLError(LookupError):
-    """Exception for if object cannot be found in the loaded yaml file object.
-    """
-    pass
