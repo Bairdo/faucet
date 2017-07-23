@@ -43,7 +43,6 @@ try:
     import valve_packet
     import valve_of
 
-    import my_lockfile as lockfile
 except ImportError:
     from faucet.config_parser import dp_parser, get_config_for_api
     from faucet.config_parser_util import config_changed
@@ -55,7 +54,6 @@ except ImportError:
     from faucet import valve_packet
     from faucet import valve_of
 
-    from faucet import my_lockfile as lockfile
 
 class EventFaucetReconfigure(event.EventBase):
     """Event used to trigger FAUCET reconfiguration."""
@@ -297,14 +295,11 @@ class Faucet(app_manager.RyuApp):
         """Handle a request to reload configuration."""
         self.logger.info('request to reload configuration')
         new_config_file = os.getenv('FAUCET_CONFIG', self.config_file)
-        conf_fd = lockfile.lock(new_config_file, os.O_RDWR)
         if config_changed(self.config_file, new_config_file, self.config_hashes):
             self.logger.info('configuration %s changed', new_config_file)
             self._load_configs(new_config_file)
         else:
             self.logger.info('configuration is unchanged, not reloading')
-        # pylint: disable=no-member
-        lockfile.unlock(conf_fd)
         self.metrics.faucet_config_reload_requests.inc()
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER) # pylint: disable=no-member
