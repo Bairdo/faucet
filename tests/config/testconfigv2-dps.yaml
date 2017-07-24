@@ -14,7 +14,6 @@ dps:
                 number: 1
                 tagged_vlans: ['v40', 41]
                 acl_in: 'acl1'
-                auth_mode: 'access'
             2:
                 native_vlan: 'v40'
             port3:
@@ -24,12 +23,10 @@ dps:
             port4:
                 number: 4
                 native_vlan: 41
-                auth_mode: 'access'
             port5:
                 number: 5
                 native_vlan: 41
                 permanent_learn: True
-                auth_mode: 'access'
             port6:
                 number: 6
                 mirror: 'port1'

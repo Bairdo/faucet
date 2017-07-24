@@ -37,7 +37,6 @@ class Port(Conf):
     acl_in = None
     stack = {}
     max_hosts = None
-    auth_mode = None
     hairpin = None
 
     defaults = {
@@ -58,7 +57,6 @@ class Port(Conf):
         'acl_in': None,
         # ACL for input on this port.
         'stack': None,
-        'auth_mode': None,
         # Configure a stack peer on this port.
         'max_hosts': 255,
         # maximum number of hosts
@@ -80,7 +78,6 @@ class Port(Conf):
         'acl_in': (str, int),
         'stack': dict,
         'max_hosts': int,
-        'auth_mode': str,
         'hairpin': bool,
     }
 
@@ -99,8 +96,6 @@ class Port(Conf):
         self._set_default('name', str(self._id))
         self._set_default('description', self.name)
         self._set_default('tagged_vlans', [])
-        # TODO do we want to convert auth_mode to integer/enum here?
-        self._set_default('auth_mode', None)
 
     @property
     def phys_up(self):
