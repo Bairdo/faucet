@@ -21,26 +21,29 @@ import os
 import yaml
 
 try:
+    import config_parser_util
     from acl import ACL
     from dp import DP
+    from meter import Meter
     from port import Port
-    from vlan import VLAN
     from router import Router
+    from vlan import VLAN
     from watcher_conf import WatcherConf
-    import config_parser_util
 except ImportError:
+    from faucet import config_parser_util
     from faucet.acl import ACL
     from faucet.dp import DP
+    from faucet.meter import Meter
     from faucet.port import Port
-    from faucet.vlan import VLAN
     from faucet.router import Router
+    from faucet.vlan import VLAN
     from faucet.watcher_conf import WatcherConf
-    from faucet import config_parser_util
 
 
 V2_TOP_CONFS = (
     'acls',
     'dps',
+    'meters',
     'routers',
     'vlans')
 
@@ -68,22 +71,22 @@ def dp_parser(config_file, logname):
     return config_hashes, dps
 
 
-def _get_vlan_by_identifier(dp_id, v_identifier, vlans):
-    '''v_identifier can be a name or anything used to identify a vlan.
-    v_identifier will be used as vid when vid is omitted in vlan config'''
-    vid = v_identifier
+def _get_vlan_by_identifier(dp_id, vlan_ident, vlans):
+    """v_identifier can be a name or anything used to identify a vlan.
+       v_identifier will be used as vid when vid is omitted in vlan config
+    """
+    if vlan_ident in vlans:
+        return vlans[vlan_ident]
     for vlan in list(vlans.values()):
-        if v_identifier == vlan._id:
-            vid = vlan.vid
-            break
-    if isinstance(vid, str):
-        try:
-            vid = int(vid, 0)
-        except:
-            assert False, 'vid value (%s) is invalid' % vid
+        if int(vlan_ident) == vlan.vid:
+            return vlan
+    try:
+        vid = int(vlan_ident, 0)
+    except:
+        assert False, 'VLAN VID value (%s) is invalid' % vid
 
-    vlan = vlans.setdefault(v_identifier, VLAN(vid, dp_id))
-    return vlan
+    return vlans.setdefault(vlan_ident, VLAN(vid, dp_id))
+
 
 def port_parser(dp_id, p_identifier, port_conf, vlans):
     port = Port(p_identifier, port_conf)
@@ -117,7 +120,8 @@ def _dp_add_vlan(vid_dp, dp, vlan):
     vid_dp[vlan.vid].add(dp.name)
 
 
-def _dp_parser_v2(logger, acls_conf, dps_conf, routers_conf, vlans_conf):
+def _dp_parser_v2(logger, acls_conf, dps_conf, meters_conf,
+                  routers_conf, vlans_conf):
     dps = []
     vid_dp = {}
     for identifier, dp_conf in list(dps_conf.items()):
@@ -127,15 +131,16 @@ def _dp_parser_v2(logger, acls_conf, dps_conf, routers_conf, vlans_conf):
             dp_id = dp.dp_id
 
             vlans = {}
-            for vid, vlan_conf in list(vlans_conf.items()):
-                vlans[vid] = VLAN(vid, dp_id, vlan_conf)
+            for vlan_ident, vlan_conf in list(vlans_conf.items()):
+                vlans[vlan_ident] = VLAN(vlan_ident, dp_id, vlan_conf)
             acls = []
             for acl_ident, acl_conf in list(acls_conf.items()):
                 acls.append((acl_ident, ACL(acl_ident, acl_conf)))
-            routers = []
             for router_ident, router_conf in list(routers_conf.items()):
                 router = Router(router_ident, router_conf)
                 dp.add_router(router_ident, router)
+            for meter_ident, meter_conf in list(meters_conf.items()):
+                dp.meters[meter_ident] = Meter(meter_ident, meter_conf)
             ports_conf = dp_conf.pop('interfaces', {})
             ports = {}
             # as users can config port vlan by using vlan name, we store vid in
@@ -144,13 +149,13 @@ def _dp_parser_v2(logger, acls_conf, dps_conf, routers_conf, vlans_conf):
                 port = port_parser(dp_id, port_num, port_conf, vlans)
                 ports[port_num] = port
                 if port.native_vlan is not None:
-                    vlan = vlans[port.native_vlan]
+                    vlan = _get_vlan_by_identifier(dp_id, port.native_vlan, vlans)
                     port.native_vlan = vlan
                     _dp_add_vlan(vid_dp, dp, vlan)
                 if port.tagged_vlans is not None:
                     tagged_vlans = []
-                    for v_identifier in port.tagged_vlans:
-                        vlan = vlans[v_identifier]
+                    for vlan_ident in port.tagged_vlans:
+                        vlan = _get_vlan_by_identifier(dp_id, vlan_ident, vlans)
                         tagged_vlans.append(vlan)
                         _dp_add_vlan(vid_dp, dp, vlan)
                     port.tagged_vlans = tagged_vlans
@@ -186,6 +191,7 @@ def _config_parser_v2(config_file, logname):
         logger,
         top_confs['acls'],
         top_confs['dps'],
+        top_confs['meters'],
         top_confs['routers'],
         top_confs['vlans'])
     return (config_hashes, dps)
