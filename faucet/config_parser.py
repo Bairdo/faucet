@@ -16,10 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import os
-import yaml
-
 try:
     import config_parser_util
     from acl import ACL
@@ -237,14 +233,3 @@ def _watcher_parser_v2(conf, logname):
             result.append(watcher)
 
     return result
-
-
-def write_yaml_file(yaml_, filename):
-    """Writes a yaml object to a file.
-    Args:
-        yaml_: object to be written.
-        filename (str): pathname.
-    """
-    with open(filename, 'w') as _file:
-        yaml.dump(yaml_, _file, default_flow_style=False)
-        os.fsync(_file.fileno())
