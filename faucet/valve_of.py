@@ -109,6 +109,10 @@ def is_groupadd(ofmsg):
     return False
 
 
+def apply_meter(meter_id):
+    return parser.OFPInstructionMeter(meter_id, ofp.OFPIT_METER)
+
+
 def apply_actions(actions):
     """Return instruction that applies action list.
 
@@ -162,6 +166,17 @@ def vid_present(vid):
         int: VLAN VID with VID_PRESENT.
     """
     return vid | ofp.OFPVID_PRESENT
+
+
+def devid_present(vid):
+    """Return VLAN VID without VID_PRESENT flag set.
+
+    Args:
+        vid (int): VLAN VID with VID_PRESENT.
+    Returns:
+        int: VLAN VID.
+    """
+    return vid ^ ofp.OFPVID_PRESENT
 
 
 def set_vlan_vid(vlan_vid):
@@ -391,6 +406,14 @@ def groupdel(datapath=None, group_id=ofp.OFPG_ALL):
         ofp.OFPGC_DELETE,
         0,
         group_id)
+
+
+def meterdel(datapath=None, meter_id=ofp.OFPM_ALL):
+    return parser.OFPMeterMod(
+        datapath,
+        ofp.OFPMC_DELETE,
+        0,
+        meter_id)
 
 
 def controller_pps_meteradd(datapath=None, pps=0):

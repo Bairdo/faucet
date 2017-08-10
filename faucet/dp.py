@@ -74,6 +74,7 @@ class DP(Conf):
     advertise_interval = None
     proactive_learn = None
     pipeline_config_dir = None
+    meters = {}
 
     # Values that are set to None will be set using set_defaults
     # they are included here for testing and informational purposes
@@ -115,9 +116,11 @@ class DP(Conf):
         'stack': None,
         # stacking config, when cross connecting multiple DPs
         'ignore_learn_ins': 3,
-        # Ignore every approx nth packet for learning. 2 will ignore 1 out of 2 packets; 3 will ignore 1 out of 3 packets.
+        # Ignore every approx nth packet for learning.
+        #2 will ignore 1 out of 2 packets; 3 will ignore 1 out of 3 packets.
         # This limits control plane activity when learning new hosts rapidly.
-        # Flooding will still be done by the dataplane even with a packet is ignored for learning purposes.
+        # Flooding will still be done by the dataplane even with a packet
+        # is ignored for learning purposes.
         'drop_broadcast_source_address': True,
         # By default drop packets with a broadcast source address
         'drop_spoofed_faucet_mac': True,
@@ -393,11 +396,14 @@ class DP(Conf):
                 port.mirror = mirror_destination_port.number
                 mirror_destination_port.mirror_destination = True
 
-        def resolve_port_names_in_acls():
+        def resolve_names_in_acls():
             for acl in list(self.acls.values()):
                 for rule_conf in acl.rules:
                     for attrib, attrib_value in list(rule_conf.items()):
                         if attrib == 'actions':
+                            if 'meter' in attrib_value:
+                                meter_name = attrib_value['meter']
+                                assert meter_name in self.meters
                             if 'mirror' in attrib_value:
                                 port_name = attrib_value['mirror']
                                 port_no = resolve_port_no(port_name)
@@ -437,7 +443,7 @@ class DP(Conf):
 
         resolve_stack_dps()
         resolve_mirror_destinations()
-        resolve_port_names_in_acls()
+        resolve_names_in_acls()
         resolve_vlan_names_in_routers()
 
     def get_native_vlan(self, port_num):
