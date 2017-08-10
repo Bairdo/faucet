@@ -42,7 +42,6 @@ try:
     import faucet_metrics
     import valve_packet
     import valve_of
-
 except ImportError:
     from faucet.config_parser import dp_parser, get_config_for_api
     from faucet.config_parser_util import config_changed
@@ -300,6 +299,7 @@ class Faucet(app_manager.RyuApp):
             self._load_configs(new_config_file)
         else:
             self.logger.info('configuration is unchanged, not reloading')
+        # pylint: disable=no-member
         self.metrics.faucet_config_reload_requests.inc()
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER) # pylint: disable=no-member
