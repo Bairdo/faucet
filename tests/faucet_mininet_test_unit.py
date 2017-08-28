@@ -1053,12 +1053,14 @@ acls:
     def _get_conf(self):
         return yaml.load(open(self.faucet_config_path, 'r').read())
 
-    def _reload_conf(self, conf, restart, cold_start, change_expected=True):
+    def _reload_conf(self, conf, restart, cold_start, change_expected=True, host_cache=False):
         open(self.faucet_config_path, 'w').write(yaml.dump(conf))
         if restart:
             var = 'faucet_config_reload_warm'
             if cold_start:
                 var = 'faucet_config_reload_cold'
+            print(self.scrape_prometheus())
+            old_mac_learning_table = self.scrape_prometheus_var('learned_macs', dpid=True, multiple=True)
             old_count = int(
                 self.scrape_prometheus_var(var, dpid=True, default=0))
             self.verify_hup_faucet()
@@ -1072,6 +1074,17 @@ acls:
                 self.assertEquals(
                     old_count, new_count,
                     msg='%s incremented: %u' % (var, new_count))
+            if host_cache:
+                print('old mac_learning_table:\n%s' % old_mac_learning_table)
+                for i in range(10):
+                    new_mac_learning_table = self.scrape_prometheus_var('learned_macs', dpid=True, multiple=True)
+                    print('new mac_learning_table:\n%s' % new_mac_learning_table)
+                    if old_mac_learning_table != new_mac_learning_table:
+                        print('attempt number: %d' % i)
+                        break
+                    time.sleep(1)
+                self.assertIsNotNone(new_mac_learning_table)
+                self.assertEquals(old_mac_learning_table, new_mac_learning_table)
 
     def get_port_match_flow(self, port_no, table_id=None):
         if table_id is None:
@@ -1140,7 +1153,7 @@ acls:
             table_id=self.PORT_ACL_TABLE)
         self.verify_tp_dst_blocked(5001, first_host, second_host)
         self.verify_tp_dst_notblocked(5002, first_host, second_host)
-        self._reload_conf(orig_conf, True, cold_start=False)
+        self._reload_conf(orig_conf, True, cold_start=False, host_cache=True)
         self.verify_tp_dst_notblocked(
             5001, first_host, second_host, table_id=None)
         self.verify_tp_dst_notblocked(

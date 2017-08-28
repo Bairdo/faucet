@@ -734,7 +734,7 @@ dbs:
             label_values = []
             for label, value in sorted(list(labels.items())):
                 label_values.append('%s="%s"' % (label, value))
-            label_values_re = r'\{%s\}' % r'\S+'.join(label_values)
+            label_values_re = r'\{%s\}' % (r'\S*'.join(label_values) + r'\S*')
         results = []
         var_re = r'^%s%s$' % (var, label_values_re)
         prom_lines = self.scrape_prometheus()
