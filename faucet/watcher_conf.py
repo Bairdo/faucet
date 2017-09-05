@@ -30,6 +30,7 @@ class WatcherConf(Conf):
 
     db = None
     dp = None
+    prom_client = None
 
     defaults = {
         'name': None,
@@ -50,6 +51,9 @@ class WatcherConf(Conf):
         # influx password
         'influx_timeout': 10,
         # timeout on influx requests
+        # prometheus config
+        'prometheus_port': 9303,
+        'prometheus_addr': '127.0.0.1',
         'views': {},
         'db_update_counter': 0,
         'nosql_db': '',
@@ -63,14 +67,9 @@ class WatcherConf(Conf):
         'switches_doc': '',
     }
 
-    def __init__(self, _id, conf):
-        self._id = _id
-        self.update(conf)
-        self.set_defaults()
-
-    def set_defaults(self):
-        for key, value in list(self.defaults.items()):
-            self._set_default(key, value)
+    def __init__(self, _id, conf, prom_client):
+        super(WatcherConf, self).__init__(_id, conf)
+        self.prom_client = prom_client
         self.name = str(self._id)
 
     def add_db(self, db_conf):

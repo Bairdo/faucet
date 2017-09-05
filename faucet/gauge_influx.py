@@ -20,6 +20,7 @@ import numpy
 
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError, InfluxDBServerError
+# pytype: disable=pyi-error
 from requests.exceptions import ConnectionError, ReadTimeout
 
 
@@ -44,19 +45,18 @@ class InfluxShipper(object):
         """Make a connection to InfluxDB and ship points."""
         if self.conf is None:
             return False
-        else:
-            try:
-                client = InfluxDBClient(
-                    host=self.conf.influx_host,
-                    port=self.conf.influx_port,
-                    username=self.conf.influx_user,
-                    password=self.conf.influx_pwd,
-                    database=self.conf.influx_db,
-                    timeout=self.conf.influx_timeout)
-                return client.write_points(points=points, time_precision='s')
-            except (ConnectionError, ReadTimeout, InfluxDBClientError, InfluxDBServerError):
-                return False
-            return True
+        try:
+            client = InfluxDBClient(
+                host=self.conf.influx_host,
+                port=self.conf.influx_port,
+                username=self.conf.influx_user,
+                password=self.conf.influx_pwd,
+                database=self.conf.influx_db,
+                timeout=self.conf.influx_timeout)
+            return client.write_points(points=points, time_precision='s')
+        except (ConnectionError, ReadTimeout, InfluxDBClientError, InfluxDBServerError):
+            return False
+        return True
 
     def make_point(self, tags, rcv_time, stat_name, stat_val):
         """Make an InfluxDB point."""
@@ -209,7 +209,7 @@ time                arp_tpa dp_name            eth_dst eth_src eth_type icmpv6_t
                 val = oxm_tlv['value']
                 field = oxm_tlv['field']
                 if mask is not None:
-                    val = '/'.join((val, mask))
+                    val = '/'.join((str(val), str(mask)))
                 tags[field] = val
                 if field == 'vlan_vid' and mask is None:
                     tags['vlan'] = devid_present(int(val))
