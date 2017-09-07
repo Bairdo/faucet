@@ -1128,6 +1128,12 @@ acls:
                         print('attempt number: %d' % i)
                         break
                     time.sleep(1)
+                learnt_mac = False
+                for l, macint in new_mac_learning_table:
+                    if macint != 0:
+                        learnt_mac = True
+
+                self.assertTrue(learnt_mac, 'Prometheus is not exporting any macints via "mac_learned"')
                 self.assertIsNotNone(new_mac_learning_table)
                 self.assertEquals(old_mac_learning_table, new_mac_learning_table)
 
