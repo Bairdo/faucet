@@ -61,7 +61,7 @@ def get_sys_prefix():
 def get_logger(logname, logfile, loglevel, propagate):
     logger = logging.getLogger(logname)
     logger_handler = WatchedFileHandler(logfile)
-    log_fmt = '%(asctime)s %(name)-6s %(levelname)-8s %(message)s'
+    log_fmt = '%(asctime)s,%(msecs)d %(name)-6s %(levelname)-8s %(message)s'
     logger_handler.setFormatter(
         logging.Formatter(log_fmt, '%b %d %H:%M:%S'))
     logger.addHandler(logger_handler)
