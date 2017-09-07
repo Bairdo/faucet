@@ -827,6 +827,7 @@ class Valve(object):
         """
         # Clear the exported MAC learning.
         dp_id = hex(self.dp.dp_id)
+        self.logger.info('clearing learned_macs')
         for _, label_dict, _ in metrics.learned_macs.collect()[0].samples:
             if label_dict['dp_id'] == dp_id:
                 metrics.learned_macs.labels(
@@ -845,8 +846,10 @@ class Valve(object):
                 metrics.vlan_neighbors.labels(
                     dp_id=dp_id, vlan=vlan.vid, ipv=ipv).set(neigh_cache_size)
             # Repopulate MAC learning.
+            self.logger.info('repopulating learned_macs')
             hosts_on_port = {}
             for eth_src, host_cache_entry in sorted(list(vlan.host_cache.items())):
+                self.logger.info('vlan.host_cache has eth %s' % eth_src)
                 port_num = str(host_cache_entry.port.number)
                 mac_int = int(eth_src.replace(':', ''), 16)
                 if port_num not in hosts_on_port:
@@ -854,6 +857,7 @@ class Valve(object):
                 hosts_on_port[port_num].append(mac_int)
             for port_num, hosts in list(hosts_on_port.items()):
                 for i, mac_int in enumerate(hosts):
+                    self.logger.info('set p: %s, i: %d, m: %d' % (port_num, i, mac_int))
                     metrics.learned_macs.labels(
                         dp_id=dp_id, vlan=vlan.vid,
                         port=port_num, n=i).set(mac_int)
