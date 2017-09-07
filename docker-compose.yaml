@@ -33,6 +33,7 @@ services:
             - './etc/prometheus/faucet.rules:/etc/prometheus/faucet.rules'
         links:
             - faucet
+            - gauge
 
     grafana:
         restart: always
@@ -50,7 +51,7 @@ services:
         build:
             context: .
             dockerfile: Dockerfile.gauge
-        image: 'faucet/gauge:1.5.8'
+        image: 'faucet/gauge:1.6.2'
         environment:
            - GAUGE_CONFIG=/etc/ryu/faucet/gauge.yaml
         volumes:
@@ -58,6 +59,7 @@ services:
             - '/etc/ryu/faucet:/etc/ryu/faucet'
         ports:
             - '6654:6653'
+            - '9303'
         links:
             - couchdb
             - influxdb
@@ -67,10 +69,10 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-        image: 'faucet/faucet:1.5.8'
+        image: 'faucet/faucet:1.6.2'
         volumes:
             - '/var/log/ryu/faucet:/var/log/ryu/faucet'
             - '/etc/ryu/faucet:/etc/ryu/faucet'
         ports:
             - '6653:6653'
-            - '9244'
+            - '9302'
