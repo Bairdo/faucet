@@ -6,5 +6,4 @@ numpy
 pbr>=1.9
 prometheus_client
 pyyaml
-requests
 ryu==4.16
