@@ -93,6 +93,7 @@ def parse_packet_in_pkt(data, max_len):
         int: Ethernet type of packet (inside VLAN)
     """
     pkt = None
+    eth_pkt = None
     vlan_vid = None
     eth_type = None
 
@@ -115,7 +116,7 @@ def parse_packet_in_pkt(data, max_len):
     except (AssertionError, stream_parser.StreamParser.TooSmallException):
         pass
 
-    return (pkt, vlan_vid, eth_type)
+    return (pkt, eth_pkt, vlan_vid, eth_type)
 
 
 def mac_addr_is_unicast(mac_addr):
@@ -155,7 +156,7 @@ def build_pkt_header(vid, eth_src, eth_dst, dl_type):
     return pkt_header
 
 
-def lacp_reqreply(vid, eth_src,
+def lacp_reqreply(eth_src,
                   actor_system, actor_key, actor_port,
                   partner_system, partner_key, partner_port,
                   partner_system_priority, partner_port_priority,
@@ -170,7 +171,6 @@ def lacp_reqreply(vid, eth_src,
     """Return a LACP frame.
 
     Args:
-        vid (int or None): VLAN VID to use (or None).
         eth_src (str): source Ethernet MAC address.
         actor_system (str): actor system ID (MAC address)
         actor_key (int): actor's LACP key assigned to this port.
@@ -192,7 +192,7 @@ def lacp_reqreply(vid, eth_src,
         ryu.lib.packet.ethernet: Ethernet packet with header.
     """
     pkt = build_pkt_header(
-        vid, eth_src, slow.SLOW_PROTOCOL_MULTICAST, ether.ETH_TYPE_SLOW)
+        None, eth_src, slow.SLOW_PROTOCOL_MULTICAST, ether.ETH_TYPE_SLOW)
     lacp_pkt = slow.lacp(
         version=1,
         actor_system=actor_system,
@@ -485,12 +485,12 @@ class PacketMeta(object):
         self.eth_type = eth_type
 
     def reparse(self, max_len):
-        pkt, vlan_vid, eth_type = parse_packet_in_pkt(
+        pkt, eth_pkt, vlan_vid, eth_type = parse_packet_in_pkt(
             self.data, max_len)
         if pkt is None or vlan_vid is None or eth_type is None:
             return
         self.pkt = pkt
-        self.eth_pkt = parse_eth_pkt(self.pkt)
+        self.eth_pkt = eth_pkt
 
     def reparse_all(self):
         self.reparse(0)

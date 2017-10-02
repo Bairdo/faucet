@@ -17,7 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import logging
 import time
 
@@ -213,17 +212,15 @@ class Valve(object):
 
         return ofmsgs
 
-    def _vlan_add_acl(self, vid):
+    def _vlan_add_acl(self, vlan):
         ofmsgs = []
-        if vid in self.dp.vlan_acl_in:
-            acl_num = self.dp.vlan_acl_in[vid]
-            acl = self.dp.acls[acl_num]
+        if vlan.acl_in:
             acl_table = self.dp.tables['vlan_acl']
             acl_allow_inst = valve_of.goto_table(self.dp.tables['eth_src'])
             ofmsgs = valve_acl.build_acl_ofmsgs(
-                [acl], acl_table, acl_allow_inst,
+                [vlan.acl_in], acl_table, acl_allow_inst,
                 self.dp.highest_priority, self.dp.meters,
-                vlan_vid=vid)
+                vlan_vid=vlan.vid)
         return ofmsgs
 
     def _add_vlan_flood_flow(self):
@@ -270,7 +267,7 @@ class Valve(object):
         # install eth_dst_table flood ofmsgs
         ofmsgs.extend(self.flood_manager.build_flood_rules(vlan))
         # add acl rules
-        ofmsgs.extend(self._vlan_add_acl(vlan.vid))
+        ofmsgs.extend(self._vlan_add_acl(vlan))
         # add controller IPs if configured.
         for ipv in vlan.ipvs():
             route_manager = self.route_manager_by_ipv[ipv]
@@ -370,20 +367,18 @@ class Valve(object):
             self.dp.running = False
             self.logger.warning('datapath down')
 
-    def _port_add_acl(self, port_num, cold_start=False):
+    def _port_add_acl(self, port, cold_start=False):
         ofmsgs = []
         acl_table = self.dp.tables['port_acl']
-        in_port_match = acl_table.match(in_port=port_num)
+        in_port_match = acl_table.match(in_port=port.number)
         if cold_start:
             ofmsgs.extend(acl_table.flowdel(in_port_match))
         acl_allow_inst = valve_of.goto_table(self.dp.tables['vlan'])
-        if port_num in self.dp.port_acl_in:
-            acl_num = self.dp.port_acl_in[port_num]
-            acl = self.dp.acls[acl_num]
+        if port.acl_in:
             ofmsgs.extend(valve_acl.build_acl_ofmsgs(
-                [acl], acl_table, acl_allow_inst,
+                [port.acl_in], acl_table, acl_allow_inst,
                 self.dp.highest_priority, self.dp.meters,
-                port_num=port_num))
+                port_num=port.number))
         else:
             ofmsgs.append(acl_table.flowmod(
                 in_port_match,
@@ -419,7 +414,7 @@ class Valve(object):
         return self._port_add_vlan_rules(port, vlan, vlan_inst)
 
     def _find_forwarding_table(self, vlan):
-        if vlan.vid in self.dp.vlan_acl_in:
+        if vlan.acl_in:
             return self.dp.tables['vlan_acl']
         return self.dp.tables['eth_src']
 
@@ -494,7 +489,7 @@ class Valve(object):
                     priority=self.dp.highest_priority))
 
             # Add ACL if any.
-            acl_ofmsgs = self._port_add_acl(port_num)
+            acl_ofmsgs = self._port_add_acl(port)
             ofmsgs.extend(acl_ofmsgs)
 
             port_vlans = port.vlans()
@@ -589,11 +584,15 @@ class Valve(object):
             list: OpenFlow messages, if any.
         """
         ofmsgs = []
-        if pkt_meta.eth_dst == valve_packet.SLOW_PROTOCOL_MULTICAST:
+        if (pkt_meta.eth_dst == valve_packet.SLOW_PROTOCOL_MULTICAST and
+                pkt_meta.eth_type == ether.ETH_TYPE_SLOW and
+                pkt_meta.port.lacp):
             pkt_meta.reparse_all()
             lacp_pkt = valve_packet.parse_lacp_pkt(pkt_meta.pkt)
+            if not lacp_pkt:
+                return ofmsgs
             pkt = valve_packet.lacp_reqreply(
-                pkt_meta.vlan.vid, pkt_meta.eth_src,
+                pkt_meta.vlan.faucet_mac,
                 pkt_meta.vlan.faucet_mac, pkt_meta.port.number, pkt_meta.port.number,
                 lacp_pkt.actor_system, lacp_pkt.actor_key, lacp_pkt.actor_port,
                 lacp_pkt.actor_system_priority, lacp_pkt.actor_port_priority,
@@ -625,8 +624,7 @@ class Valve(object):
                 if pkt_meta.eth_type in route_manager.CONTROL_ETH_TYPES:
                     pkt_meta.reparse_ip(route_manager.ETH_TYPE)
                     ofmsgs = route_manager.control_plane_handler(pkt_meta)
-                    if ofmsgs:
-                        break
+                    break
         return ofmsgs
 
     def _known_up_dpid_and_port(self, dp_id, in_port):
@@ -717,7 +715,7 @@ class Valve(object):
 
         return ofmsgs
 
-    def parse_rcv_packet(self, in_port, vlan_vid, eth_type, data, pkt):
+    def parse_rcv_packet(self, in_port, vlan_vid, eth_type, data, pkt, eth_pkt):
         """Parse a received packet into a PacketMeta instance.
 
         Args:
@@ -726,10 +724,10 @@ class Valve(object):
             eth_type (int): Ethernet type of packet.
             data (bytes): Raw packet data.
             pkt (ryu.lib.packet.packet): parsed packet received.
+            ekt_pkt (ryu.lib.packet.ethernet): parsed Ethernet header.
         Returns:
             PacketMeta instance.
         """
-        eth_pkt = valve_packet.parse_eth_pkt(pkt)
         eth_src = eth_pkt.src
         eth_dst = eth_pkt.dst
         vlan = self.dp.vlans[vlan_vid]
@@ -754,7 +752,7 @@ class Valve(object):
         if len(hosts) == port.max_hosts:
             ofmsgs.append(self.host_manager.temp_ban_host_learning_on_port(
                 port))
-            port.learn_ban_count += 1
+            port.dyn_learn_ban_count += 1
             self.logger.info(
                 'max hosts %u reached on port %u, '
                 'temporarily banning learning on this port, '
@@ -780,7 +778,7 @@ class Valve(object):
                 eth_src not in vlan.host_cache):
             ofmsgs.append(self.host_manager.temp_ban_host_learning_on_vlan(
                 vlan))
-            vlan.learn_ban_count += 1
+            vlan.dyn_learn_ban_count += 1
             self.logger.info(
                 'max hosts %u reached on vlan %u, '
                 'temporarily banning learning on this vlan, '
@@ -818,7 +816,7 @@ class Valve(object):
             metrics.vlan_hosts_learned.labels(
                 dp_id=dp_id, vlan=vlan.vid).set(hosts_count)
             metrics.vlan_learn_bans.labels(
-                dp_id=dp_id, vlan=vlan.vid).set(vlan.learn_ban_count)
+                dp_id=dp_id, vlan=vlan.vid).set(vlan.dyn_learn_ban_count)
             for ipv in vlan.ipvs():
                 neigh_cache_size = len(vlan.neigh_cache_by_ipv(ipv))
                 metrics.vlan_neighbors.labels(
@@ -830,7 +828,7 @@ class Valve(object):
                         dp_id=dp_id, vlan=vlan.vid,
                         port=port.number, n=i).set(mac_int)
                 metrics.port_learn_bans.labels(
-                    dp_id=dp_id, port=port.number).set(port.learn_ban_count)
+                    dp_id=dp_id, port=port.number).set(port.dyn_learn_ban_count)
 
     def rcv_packet(self, dp_id, valves, pkt_meta):
         """Handle a packet from the dataplane (eg to re/learn a host).
@@ -953,10 +951,7 @@ class Valve(object):
             else:
                 old_vlan = self.dp.vlans[vid]
                 if old_vlan != new_vlan:
-                    old_vlan_new_ports = copy.deepcopy(old_vlan)
-                    old_vlan_new_ports.tagged = new_vlan.tagged
-                    old_vlan_new_ports.untagged = new_vlan.untagged
-                    if old_vlan_new_ports != new_vlan:
+                    if not old_vlan.ignore_subconf(new_vlan):
                         changed_vlans.add(vid)
                         self.logger.info('VLAN %s config changed' % vid)
                 else:
@@ -997,15 +992,14 @@ class Valve(object):
                 old_port = self.dp.ports[port_no]
                 # An existing port has configs changed
                 if new_port != old_port:
-                    old_port_ignore_acl = copy.deepcopy(old_port)
-                    old_port_ignore_acl.acl_in = new_port.acl_in
-                    # Did config other than ACL change
-                    if new_port != old_port_ignore_acl:
-                        changed_ports.add(port_no)
-                        self.logger.info('port %s reconfigured' % port_no)
-                    else:
+                    # TODO: we assume if port config had sub config
+                    # changed, it must have been the ACL.
+                    if old_port.ignore_subconf(new_port):
                         changed_acl_ports.add(port_no)
                         self.logger.info('port %s ACL changed' % port_no)
+                    else:
+                        changed_ports.add(port_no)
+                        self.logger.info('port %s reconfigured' % port_no)
                 elif new_port.acl_in in changed_acls:
                     # If the port has ACL changed.
                     changed_acl_ports.add(port_no)
@@ -1079,7 +1073,6 @@ class Valve(object):
 
         if all_ports_changed:
             self.dp = new_dp
-            ofmsgs.extend(self.datapath_connect(self.dp.dp_id, changed_ports))
         else:
             cold_start = False
             if deleted_ports:
@@ -1104,7 +1097,8 @@ class Valve(object):
                 ofmsgs.extend(self.ports_add(self.dp.dp_id, changed_ports))
             if changed_acl_ports:
                 self.logger.info('ports with ACL only changed: %s' % changed_acl_ports)
-                for port in changed_acl_ports:
+                for port_num in changed_acl_ports:
+                    port = self.dp.ports[port_num]
                     ofmsgs.extend(self._port_add_acl(port, cold_start=True))
 
         return cold_start, ofmsgs
@@ -1126,13 +1120,19 @@ class Valve(object):
                 cold_start (bool): whether cold starting.
                 ofmsgs (list): OpenFlow messages.
         """
+        cold_start = False
+        ofmsgs = []
         if self.dp.running:
             self.logger.info('reload configuration')
-            return self._apply_config_changes(
-                new_dp,
-                self._get_config_changes(new_dp))
-        self.logger.info('skipping configuration because datapath not up')
-        return (False, [])
+            cold_start, ofmsgs = self._apply_config_changes(
+                new_dp, self._get_config_changes(new_dp))
+            if cold_start:
+                self.dp = new_dp
+                ofmsgs = self.datapath_connect(
+                    self.dp.dp_id, list(self.dp.ports.keys()))
+        else:
+            self.logger.info('skipping configuration because datapath not up')
+        return (cold_start, ofmsgs)
 
     def _add_faucet_vips(self, route_manager, vlan, faucet_vips):
         ofmsgs = []
