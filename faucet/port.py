@@ -63,6 +63,8 @@ class Port(Conf):
         # maximum number of hosts
         'hairpin': False,
         # if True, then switch between hosts on this port (eg WiFi radio).
+        'lacp': False,
+        # if True, experimental LACP support enabled on this port.
     }
 
     defaults_types = {
@@ -113,6 +115,25 @@ class Port(Conf):
                     'port': str(self.stack['port'])
                 }
         return result
+
+    def vlans(self):
+        """Return list of all VLANs this port is in."""
+        vlans = []
+        if self.native_vlan is not None:
+            vlans.append(self.native_vlan)
+        vlans.extend(self.tagged_vlans)
+        return vlans
+
+    def hosts(self, vlans=None):
+        """Return all hosts this port has learned (on all or specified VLANs)."""
+        hosts = []
+        if vlans is None:
+            vlans = self.vlans()
+        for vlan in vlans:
+            for eth_src, host_cache_entry in list(vlan.host_cache.items()):
+                if host_cache_entry.port == self:
+                    hosts.append(eth_src)
+        return hosts
 
     def __str__(self):
         return 'Port %u' % self.number

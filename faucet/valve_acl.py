@@ -23,6 +23,19 @@ except ImportError:
     from faucet import valve_of
 
 
+def push_vlan(vlan_vid):
+    """Push a VLAN tag with optional selection of eth type."""
+    vid = vlan_vid
+    vlan_eth_type = None
+    if isinstance(vlan_vid, dict):
+        vid = vlan_vid['vid']
+        if 'eth_type' in vlan_vid:
+            vlan_eth_type = vlan_vid['eth_type']
+    if vlan_eth_type is None:
+        return valve_of.push_vlan_act(vid)
+    return valve_of.push_vlan_act(vid, eth_type=vlan_eth_type)
+
+
 def rewrite_vlan(output_dict):
     """Implement actions to rewrite VLAN headers."""
     vlan_actions = []
@@ -31,16 +44,15 @@ def rewrite_vlan(output_dict):
             vlan_actions.append(valve_of.pop_vlan())
     # if vlan tag is specified, push it.
     if 'vlan_vid' in output_dict:
-        vlan_actions.extend(
-            valve_of.push_vlan_act(output_dict['vlan_vid']))
+        vlan_actions.extend(push_vlan(output_dict['vlan_vid']))
     # swap existing VID
     elif 'swap_vid' in output_dict:
         vlan_actions.append(
             valve_of.set_vlan_vid(output_dict['swap_vid']))
     # or, if a list, push them all (all with type Q).
     elif 'vlan_vids' in output_dict:
-        for vid in output_dict['vlan_vids']:
-            vlan_actions.extend(valve_of.push_vlan_act(vid))
+        for vlan_vid in output_dict['vlan_vids']:
+            vlan_actions.extend(push_vlan(vlan_vid))
     return vlan_actions
 
 
@@ -117,3 +129,19 @@ def build_acl_entry(rule_conf, acl_allow_inst, meters, port_num=None, vlan_vid=N
         match_dict['vlan_vid'] = valve_of.vid_present(vlan_vid)
     acl_match = valve_of.match_from_dict(match_dict)
     return (acl_match, acl_inst, ofmsgs)
+
+
+def build_acl_ofmsgs(acls, acl_table, acl_allow_inst,
+                     highest_priority, meters,
+                     port_num=None, vlan_vid=None):
+    ofmsgs = []
+    acl_rule_priority = highest_priority
+    for acl in acls:
+        for rule_conf in acl.rules:
+            acl_match, acl_inst, acl_ofmsgs = build_acl_entry(
+                rule_conf, acl_allow_inst, meters, port_num, vlan_vid)
+            ofmsgs.extend(acl_ofmsgs)
+            ofmsgs.append(acl_table.flowmod(
+                acl_match, priority=acl_rule_priority, inst=acl_inst))
+            acl_rule_priority -= 1
+    return ofmsgs

@@ -107,10 +107,7 @@ class ValveHostManager(object):
                     'expiring host %s from VLAN %u' % (eth_src, vlan.vid))
             self.logger.info(
                 '%u recently active hosts on VLAN %u' % (
-                    self.hosts_learned_on_vlan_count(vlan), vlan.vid))
-
-    def hosts_learned_on_vlan_count(self, vlan):
-        return len(vlan.host_cache)
+                    vlan.hosts_count(), vlan.vid))
 
     def learn_host_on_vlan_port(self, port, vlan, eth_src, clear=True):
         now = time.time()
@@ -152,16 +149,15 @@ class ValveHostManager(object):
         # the rule
         # NB: Must be lower than highest priority otherwise it can match
         # flows destined to controller
+        src_rule_idle_timeout = 0
+        dst_rule_idle_timeout = 0
+        src_rule_hard_timeout = learn_timeout
+
         if self.use_idle_timeout:
             # Disable hard_time, dst rule expires after src rule.
             src_rule_idle_timeout = learn_timeout
             src_rule_hard_timeout = 0
             dst_rule_idle_timeout = learn_timeout + 2
-        else:
-            # keep things as usual
-            src_rule_idle_timeout = 0
-            src_rule_hard_timeout = learn_timeout
-            dst_rule_idle_timeout = learn_timeout
 
         ofmsgs.append(self.eth_src_table.flowmod(
             self.eth_src_table.match(
@@ -195,10 +191,7 @@ class ValveHostManager(object):
 
         self.logger.info(
             'learned %s on %s on VLAN %u (%u hosts total)' % (
-                eth_src,
-                port,
-                vlan.vid,
-                self.hosts_learned_on_vlan_count(vlan)))
+                eth_src, port, vlan.vid, vlan.hosts_count()))
 
         return ofmsgs
 

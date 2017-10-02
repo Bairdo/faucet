@@ -1,20 +1,21 @@
-FROM python:3-slim
+FROM frolvlad/alpine-python3
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV APK="apk -q"
+ENV BUILDDEPS="gcc python3-dev musl-dev"
 ENV TESTDEPS="bitstring pytest setuptools wheel virtualenv"
-
-RUN \
-  apt-get update && \
-  apt-get install -qy --no-install-recommends git
+ENV PIP3="pip3 -q --no-cache-dir install --upgrade"
 
 COPY ./ /faucet-src/
 
 RUN \
-  pip3 --no-cache-dir install --upgrade pip && \
-  pip3 --no-cache-dir install $TESTDEPS --upgrade && \
-  pip3 --no-cache-dir install -r /faucet-src/requirements.txt && \
-  pip3 --no-cache-dir install /faucet-src && \
-  python3 -m pytest /faucet-src/tests/test_valve.py
+  $APK add -U git $BUILDDEPS && \
+  $PIP3 pip && \
+  $PIP3 $TESTDEPS && \
+  $PIP3 -r /faucet-src/requirements.txt && \
+  $PIP3 /faucet-src && \
+  python3 -m pytest /faucet-src/tests/test_valve.py && \
+  for i in $BUILDDEPS ; do $APK del $i ; done && \
+  find / -name \*pyc -delete
 
 VOLUME ["/etc/ryu/faucet/", "/var/log/ryu/faucet/"]
 
