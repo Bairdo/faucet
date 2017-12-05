@@ -19,10 +19,13 @@
 # limitations under the License.
 
 import logging
+import os
 import random
 import signal
 import sys
 import time
+
+from greenlet import GreenletExit
 
 from ryu.base import app_manager
 from ryu.controller.handler import CONFIG_DISPATCHER
@@ -282,13 +285,18 @@ class Faucet(app_manager.RyuApp):
         if sigid == signal.SIGHUP:
             self.send_event('Faucet', EventFaucetReconfigure())
         elif sigid == signal.SIGINT:
+            for t in self.threads:
+                t.kill()
             self.close()
-            sys.exit(0)
+            os._exit(0)
 
     @staticmethod
     def _thread_jitter(period, jitter=2):
         """Reschedule another thread with a random jitter."""
-        hub.sleep(period + random.randint(0, jitter))
+        try:
+            hub.sleep(period + random.randint(0, jitter))
+        except GreenletExit:
+            pass
 
     def _thread_reschedule(self, ryu_event, period, jitter=2):
         """Trigger Ryu events periodically with a jitter.
