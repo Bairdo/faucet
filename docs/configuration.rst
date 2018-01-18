@@ -1,6 +1,7 @@
 Configuration
 =============
 
+
 Faucet is configured with a YAML-based configuration file, ``faucet.yaml``.
 The following is example demonstrating a few common features:
 
@@ -130,126 +131,11 @@ configuration contains a dictionary of configuration blocks each
 containing the configuration for one datapath. The keys can either be
 string names given to the datapath, or the OFP datapath id.
 
-.. list-table:: dps/<dp name or id>/
-    :widths: 31 15 15 60
+.. csv-table:: dps/<dp name or id>/
+    :file: dp.py.csv
+    :widths: 31, 15, 15, 61
     :header-rows: 1
-
-    * - Attribute
-      - Type
-      - Default
-      - Description
-    * - arp_neighbor_timeout
-      - type
-      - 500
-      - ARP and neighbour timeout in seconds
-    * - description
-      - string
-      - None
-      - Description of this datapath, strictly informational
-    * - dp_id
-      - integer
-      - The configuration key
-      - the OFP datapath-id of this datapath
-    * - drop_bpdu
-      - boolean
-      - True
-      - If True, Faucet will drop all STP BPDUs arriving at the datapath. NB:
-        Faucet does not handle BPDUs itself, if you disable this then you
-        either need to configure an ACL to catch BDPUs or Faucet will forward
-        them as though they were normal traffic.
-    * - drop_broadcast_source_address
-      - boolean
-      - True
-      - If True, Faucet will drop any packet from a broadcast source address
-    * - drop_lldp
-      - boolean
-      - True
-      - If True, Faucet will drop all STP BPDUs arriving at the datapath. NB:
-        Faucet does not handle BPDUs itself, if you disable this then you
-        either need to configure an ACL to catch BDPUs or Faucet will forward
-        them as though they were normal traffic.
-    * - drop_spoofed_faucet_mac
-      - bool
-      - True
-      - If True, Faucet will drop any packet it receives with an ethernet
-        source address equal to a MAC address that Faucet is using.
-    * - group_table
-      - bool
-      - False
-      - If True, Faucet will use the OpenFlow Group tables to flood packets.
-        This is an experimental feature that is not fully supported by all
-        devices and may not interoperate with all features of faucet.
-    * - hardware
-      - string
-      - "Open vSwitch"
-      - The hardware model of the datapath. Defaults to "Open vSwitch". Other
-        options can be seen in the documentation for valve.py
-    * - ignore_learn_ins
-      - integer
-      - 3
-      - Ignore every approx nth packet for learning. 2 will ignore 1 out of 2
-        packets; 3 will ignore 1 out of 3 packets. This limits control plane
-        activity when learning new hosts rapidly. Flooding will still be done
-        by the dataplane even with a packet is ignored for learning purposes.
-    * - interfaces
-      - dictionary
-      - {}
-      - configuration block for interface specific config (see below)
-    * - interface_ranges
-      - dictionary
-      - {}
-      - contains the config blocks for sets of multiple interfaces. The
-        configuration entered here will be used as the defaults for these
-        interfaces. This can be overwritten by configuring those interfaces
-        directly. The format for the configuration key is a comma separated
-        string.  The elements can either be the name or number of an interface
-        or a range of port numbers eg: "1-6,8,port9".
-    * - learn_ban_timeout
-      - integer
-      - 10
-      - When a host is rapidly moving between ports Faucet will stop learning
-        mac addresses on one of the ports for this number of seconds.
-    * - learn_jitter
-      - integer
-      - 10
-      - In order to reduce load on the controller Faucet will randomly vary the
-        timeout for learnt mac addresses by up to this number of seconds.
-    * - max_host_fib_retry_count
-      - integer
-      - 10
-      - Limit the number of times Faucet will attempt to resolve a next-hop's
-        l2 address.
-    * - max_hosts_per_resolve_cycle
-      - integer
-      - 5
-      - Limit the number of hosts resolved per cycle.
-    * - max_resolve_backoff_time
-      - integer
-      - 32
-      - When resolving next hop l2 addresses, Faucet will back off
-        exponentially until it reaches this value.
-    * - name
-      - string
-      - The configuration key
-      - A name to reference the datapath by.
-    * - stack
-      - dictionary
-      - {}
-      - configuration block for stacking config, for loop protection (see
-        below)
-    * - timeout
-      - integer
-      - 300
-      - timeout for MAC address learning
-    * - targeted_gw_resolution
-      - bool
-      - False
-      - if True, and a gateway has been resolved, target the first re-resolution attempt to the same port rather than flooding.
-    * - minimum_ip_size_check
-      - bool
-      - True
-      - If False, don't check that IP packets have a payload (must be False for OVS trace/tutorial to work)
-
+    :delim: #
 
 Stacking (DP)
 ~~~~~~~~~~~~~
@@ -285,78 +171,11 @@ the config block for an individual interface. These are keyed with a string
 containing a comma separated list of OFP port numbers, interface names or with
 OFP port number ranges (eg. 1-6).
 
-.. list-table:: dps/<dp name or id>/interfaces/<interface name or OFP port number>/
-    :widths: 31 15 15 60
+.. csv-table:: dps/<dp name or id>/interfaces/<interface name or OFP port number>/
+    :file: port.py.csv
+    :widths: 31, 15, 15, 61
     :header-rows: 1
-
-    * - Attribute
-      - Type
-      - Default
-      - Description
-    * - acl_in
-      - integer or string
-      - None
-      - The acl that should be applied to all packets arriving on this port.
-        referenced by name or list index
-    * - description
-      - string
-      - None
-      - Description, purely informational
-    * - enabled
-      - boolean
-      - True
-      - Allow packets to be forwarded through this port.
-    * - hairpin
-      - boolean
-      - True
-      - If True it allows packets arriving on this port to be output to this
-        port. This is necessary to allow routing between two vlans on this
-        port, or for use with a WIFI radio port.
-    * - max_hosts
-      - integer
-      - 255
-      - the maximum number of mac addresses that can be learnt on this port.
-    * - mirror
-      - integer or string
-      - None
-      - Mirror all packets recieved and transmitted on this port to the port
-        specified (by name or by port number)
-    * - name
-      - string
-      - The configuration key.
-      - a name to reference this port by.
-    * - native_vlan
-      - integer
-      - None
-      - The vlan associated with untagged packets arriving and leaving this
-        interface.
-    * - number
-      - integer
-      - The configuration key.
-      - The OFP port number for this port.
-    * - permanent_learn
-      - boolean
-      - False
-      - When True Faucet will only learn the first MAC address on this
-        interface. All packets with an ethernet src address not equal to that
-        MAC address will be dropped.
-    * - stack
-      - dictionary
-      - None
-      - configuration block for interface level stacking configuration
-    * - tagged_vlans
-      - list of integers or strings
-      - None
-      - The vlans associated with tagged packets arriving and leaving this
-        interfaces.
-    * - unicast_flood
-      - boolean
-      - True
-      - If False unicast packets will not be flooded to this port.
-    * - output_only
-      - boolean
-      - False
-      - If True, no packets will be accepted from this port.
+    :delim: #
 
 Stacking (Interfaces)
 ~~~~~~~~~~~~~~~~~~~~~
@@ -411,77 +230,11 @@ VLANs are configured in the 'vlans' configuration block at the top level of
 the faucet config file. The config for each vlan is an entry keyed by its vid
 or a name. The following attributes can be configured:
 
-.. list-table:: vlans/<vlan name or vid>/:
-    :widths: 31 15 15 60
+.. csv-table:: vlans/<vlan name or vid>/:
+    :file: vlan.py.csv
+    :widths: 31, 15, 15, 61
     :header-rows: 1
-
-    * - Attribute
-      - Type
-      - Default
-      - Description
-    * - acl_in
-      - string or integer
-      - None
-      - The acl to be applied to all packets arriving on this vlan.
-    * - bgp_as
-      - integer
-      - 0
-      - The local AS number to used when speaking BGP
-    * - bgp_local_address
-      - string (IP Address)
-      - None
-      - The local address to use when speaking BGP
-    * - bgp_neighbour_addresses
-      - list of strings (IP Addresses)
-      - None
-      - The list of BGP neighbours
-    * - bgp_neighbour_as
-      - integer
-      - 0
-      - The AS Number for the BGP neighbours
-    * - bgp_port
-      - integer
-      - 9179
-      - Port to use for bgp sessions
-    * - description
-      - string
-      - None
-      - Strictly informational
-    * - faucet_vips
-      - list of strings (IP address prefixes)
-      - None
-      - The IP Address for Faucet's routing interface on this vlan
-    * - max_hosts
-      - integer
-      - 255
-      - The maximum number of hosts that can be learnt on this vlan.
-    * - name
-      - string
-      - the configuration key
-      - A name that can be used to refer to this vlan.
-    * - proactive_arp_limit
-      - integer
-      - None
-      - Do not proactively ARP for hosts once this value has been reached
-        (unlimited by default)
-    * - proactive_nd_limit
-      - integer
-      - None
-      - Don't proactively discover IPv6 hosts once this value has been reached
-        (unlimited by default)
-    * - routes
-      - list of routes
-      - None
-      - static routes configured on this vlan (see below)
-    * - unicast_flood
-      - boolean
-      - True
-      - If False packets to unknown ethernet destination MAC addresses will be
-        dropped rather than flooded.
-    * - vid
-      - integer
-      - the configuration key
-      - The vid for the vlan.
+    :delim: #
 
 Static Routes
 ~~~~~~~~~~~~~
