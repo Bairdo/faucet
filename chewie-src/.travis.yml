@@ -1,0 +1,20 @@
+dist: trusty
+language: python
+python:
+  - '3.6'
+env:
+  global:
+    - GIT_COMMITTED_AT=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then git log -1 --pretty=format:%ct; else git log -1 --skip 1 --pretty=format:%ct; fi)
+    - CC_TEST_REPORTER_ID=3b159317808fe335201d4666f82eab6199272452aaf05d1b55e1e55319d0689c
+cache:
+  pip: true
+install:
+  - pip3 install -q -r requirements.txt -r test-requirements.txt
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+script:
+  - ./run_tests.sh
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT

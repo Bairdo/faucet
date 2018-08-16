@@ -82,7 +82,7 @@ class TcpdumpHelper(object):
                 if not line:
                     break
                 debug('tcpdump_helper fd %d line "%s"' % (self.stream().fileno(), line))
-                tcpdump_txt += line.strip()
+                tcpdump_txt += line
         return tcpdump_txt
 
     def terminate(self):

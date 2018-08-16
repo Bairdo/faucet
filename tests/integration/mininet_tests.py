@@ -165,20 +165,29 @@ acls:
             actions:
                 output:
                     set_fields:
-                        - eth_dst: 00:00:00:00:00:01
+                        - eth_dst: NFV_MAC
                     port: b4
         - rule:
             actions:
-                allow: 1
+                allow: 0
     eapol_from_nfv:
         - rule:
             dl_type: 0x888e
-            eth_dst: 00:00:00:00:00:01
+            eth_dst: NFV_MAC
             actions:
                 output:
                     set_fields:
                         - eth_dst: 01:80:c2:00:00:03
                     port: b1
+        - rule:
+            actions:
+                allow: 0
+    block_eap:
+        - rule:
+            dl_type: 0x888e
+            actions:
+                allow: 0
+    drop_all:
         - rule:
             actions:
                 allow: 0
@@ -199,9 +208,11 @@ acls:
             %(port_2)d:
                 native_vlan: 100
                 description: "b2"
+                acls_in: [block_eap, drop_all]
             %(port_3)d:
                 native_vlan: 100
                 description: "b3"
+                acls_in: [block_eap, drop_all]
             %(port_4)d:
                 name: b4
                 native_vlan: 100
@@ -230,16 +241,63 @@ network={
         self.nfv_host = self.net.hosts[-1]
         switch = self.net.switches[0]
         last_host_switch_link = switch.connectionsTo(self.nfv_host)[0]
+        print(last_host_switch_link)
         self.nfv_intf = str([
             intf for intf in last_host_switch_link if intf in switch.intfList()][0])
+
+        print(self.nfv_intf)
+
         self.CONFIG = self.CONFIG.replace('NFV_INTF', self.nfv_intf)
+        self.CONFIG_GLOBAL = self.CONFIG_GLOBAL.replace("NFV_MAC", self.nfv_host.intf().MAC())
+        print(self.CONFIG_GLOBAL)
         super(FaucetUntagged8021XTest, self)._write_faucet_config()
 
     def setUp(self):
         super(FaucetUntagged8021XTest, self).setUp()
         self.host_drop_all_ips(self.nfv_host)
+        os.system("timeout 40 tcpdump -U -i sab-eth1 -w /tmp/packetcap.pcap &")
+
 
     def test_untagged(self):
+        print(self.nfv_host.cmdPrint('ip link'))
+        tcpdump_filter = '-Q in'
+        x = ''
+
+        def callme():
+            wpa_log = self.start_wpasupplicant(self.eapol_host, self.wpasupplicant_conf, timeout=35)
+            with open(wpa_log, 'r') as log:
+                print(log.read())
+            return 1
+
+        print('nfv_intf', self.nfv_intf)
+        print('nfv_host mAC', self.nfv_host.intf().MAC())
+
+        print('one')
+        tcpdump_txt = self.tcpdump_helper(
+            self.nfv_host, tcpdump_filter, [
+                callme],
+            timeout=40, vflags='-vv', packets=5, intf_name="uab4-eth0")
+        print('nfv_host tcpdump_txt')
+        for l in tcpdump_txt.split('\n'):
+            print(l)
+
+
+
+        time.sleep(10)
+        print('os.system tcpdump')
+        os.system('tcpdump -vv -e -r /tmp/packetcap.pcap')
+
+        print('\n')
+        print(self.net.controllers[0].cmdPrint('ip link'))
+
+
+        faucet_log = self.env['faucet']['FAUCET_LOG']
+        with open(faucet_log, 'r') as log:
+            print(log.read())
+
+        with open(self.monitor_flow_table_file, 'r') as f:
+            print(f.read())
+        self.fail()
         return
 
 

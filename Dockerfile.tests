@@ -3,6 +3,8 @@
 FROM faucet/test-base:latest
 
 COPY ./ /faucet-src/
-WORKDIR /faucet-src/
 
-CMD ["docker/runtests.sh"]
+RUN mv /faucet-src/chewie-src /chewie-src/ && pip3 install /chewie-src/
+
+WORKDIR /faucet-src/
+CMD date && pip3 show chewie && ip addr && sysctl -w net.ipv6.conf.all.disable_ipv6=0 && docker/runtests.sh

@@ -1,0 +1,55 @@
+version: '2'
+
+services:
+    wpasupplicant:
+        build:
+            context: .
+            dockerfile: Dockerfile.wpasupplicant
+        image: 'chewie/wpasupplicant:latest'
+        command: bash -c "wpa_supplicant -dd -c/tmp/wpasupplicant.conf -ieth0 -Dwired;"
+        networks:
+            wpasupplicant-net:
+                ipv4_address: 172.23.0.111
+        cap_add:
+            - ALL
+        volumes:
+            - ./wpasupplicant.conf:/tmp/wpasupplicant.conf
+
+    test:
+        build:
+            context: .
+            dockerfile: Dockerfile.chewie
+        image: 'chewie/chewie:latest'
+        command: bash -c "python3 /chewie-src/run.py"
+        networks:
+            wpasupplicant-net:
+                ipv4_address: 172.23.0.112
+            radius-net:
+                ipv4_address: 172.24.0.112
+        cap_add:
+            - ALL
+        volumes:
+            - ./:/chewie-src/
+
+    freeradius:
+        build:
+            context: .
+            dockerfile: Dockerfile.freeradius
+        image: 'chewie/freeradius:latest'
+        networks:
+            radius-net:
+                ipv4_address: 172.24.0.113
+        volumes:
+            - "./etc/freeradius/clients.conf:/etc/freeradius/clients.conf:ro"
+            - "./etc/freeradius/users:/etc/freeradius/users:ro"
+
+networks:
+    wpasupplicant-net:
+        driver: macvlan
+        ipam:
+            config:
+                - subnet: 172.23.0.0/16
+    radius-net:
+        ipam:
+            config:
+                - subnet: 172.24.0.0/16
