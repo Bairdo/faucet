@@ -10,8 +10,8 @@ import time
 from eventlet import sleep, GreenPool
 
 from eventlet.queue import Queue
-from eventlet.green import socket
-# import socket
+# from eventlet.green import socket
+import socket
 from chewie.eap_state_machine import FullEAPStateMachine
 from chewie.radius_attributes import EAPMessage, State, CalledStationId, NASPortType
 from chewie.message_parser import MessageParser, MessagePacker
@@ -111,7 +111,7 @@ class Chewie(object):
     def receive_send_eap_messages(self):
         try:
 
-            with contextlib.closing(socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))) as sock:  # changing 0x003 to 0x888e does not receive any packets. as we have with https://github.com/faucetsdn/chewie/blob/master/chewie/chewie.py#L183
+            with contextlib.closing(socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))) as sock:
             # sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
             #     IFF_PROMISC = 0x100
             #     SIOCGIFFLAGS = 0x8913

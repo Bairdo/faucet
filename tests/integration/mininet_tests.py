@@ -162,6 +162,7 @@ acls:
     eapol_to_nfv:
         - rule:
             dl_type: 0x888e
+            cookie: 34567
             actions:
                 output:
                     set_fields:
@@ -173,11 +174,12 @@ acls:
     eapol_from_nfv:
         - rule:
             dl_type: 0x888e
-            eth_dst: NFV_MAC
+            # eth_dst: NFV_MAC
+            cookie: 12345
             actions:
                 output:
-                    set_fields:
-                        - eth_dst: 01:80:c2:00:00:03
+                    # set_fields:
+                        # - eth_dst: 01:80:c2:00:00:03
                     port: b1
         - rule:
             actions:
@@ -242,13 +244,17 @@ network={
         switch = self.net.switches[0]
         last_host_switch_link = switch.connectionsTo(self.nfv_host)[0]
         print(last_host_switch_link)
-        self.nfv_intf = str([
-            intf for intf in last_host_switch_link if intf in switch.intfList()][0])
 
+        nfv_intf = [
+            intf for intf in last_host_switch_link if intf in switch.intfList()][0]
+        print(nfv_intf.MAC())
+        self.nfv_intf = str(nfv_intf)
+        nfv_intf = self.nfv_host.intf()
+        print(nfv_intf)
         print(self.nfv_intf)
 
         self.CONFIG = self.CONFIG.replace('NFV_INTF', self.nfv_intf)
-        self.CONFIG_GLOBAL = self.CONFIG_GLOBAL.replace("NFV_MAC", self.nfv_host.intf().MAC())
+        self.CONFIG_GLOBAL = self.CONFIG_GLOBAL.replace("NFV_MAC", nfv_intf.MAC())
         print(self.CONFIG_GLOBAL)
         super(FaucetUntagged8021XTest, self)._write_faucet_config()
 
@@ -263,7 +269,7 @@ network={
         tcpdump_filter = '-Q in'
         x = ''
 
-        def callme():
+        def wpa_supp_callback():
             wpa_log = self.start_wpasupplicant(self.eapol_host, self.wpasupplicant_conf, timeout=35)
             with open(wpa_log, 'r') as log:
                 print(log.read())
@@ -272,10 +278,9 @@ network={
         print('nfv_intf', self.nfv_intf)
         print('nfv_host mAC', self.nfv_host.intf().MAC())
 
-        print('one')
         tcpdump_txt = self.tcpdump_helper(
             self.nfv_host, tcpdump_filter, [
-                callme],
+                wpa_supp_callback],
             timeout=40, vflags='-vv', packets=5, intf_name="uab4-eth0")
         print('nfv_host tcpdump_txt')
         for l in tcpdump_txt.split('\n'):
@@ -291,10 +296,12 @@ network={
         print(self.net.controllers[0].cmdPrint('ip link'))
 
 
+        print('Faucet log')
         faucet_log = self.env['faucet']['FAUCET_LOG']
         with open(faucet_log, 'r') as log:
             print(log.read())
 
+        print('flow table log:')
         with open(self.monitor_flow_table_file, 'r') as f:
             print(f.read())
         self.fail()
