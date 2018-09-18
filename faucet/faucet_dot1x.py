@@ -159,8 +159,6 @@ class FaucetDot1x:
         Returns:
             list of flowmods
         """
-        # TODO let chewie know about the port down event.
-
         valve_index = self.dp_id_to_valve_index[valve.dp.dp_id]
         mac = get_mac_str(valve_index, dot1x_port.number)
 
