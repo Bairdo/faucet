@@ -163,6 +163,9 @@ class FaucetDot1x:
 
         valve_index = self.dp_id_to_valve_index[valve.dp.dp_id]
         mac = get_mac_str(valve_index, dot1x_port.number)
+
+        self.dot1x_speaker.port_down(mac)
+
         port_acl_table = valve.dp.tables['port_acl']
         ofmsgs = []
         # to_nfv

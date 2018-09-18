@@ -606,6 +606,10 @@ class Faucet8021XPortChangesTest(Faucet8021XSuccessTest):
         actions = ['SET_FIELD: {eth_dst:00:00:00:00:00:01}', 'OUTPUT:4']
         self.assertTrue(self.get_matching_flow(match=None, actions=actions, timeout=2))
 
+        tcpdump_txt = self.try_8021x(self.eapol1_host, 1,
+                                     self.wpasupplicant_conf_1, and_logoff=False)
+        self.assertIn('Success', tcpdump_txt)
+
         self.set_port_down(1)
         self.assertFalse(self.get_matching_flow(match=None, actions=actions))
 
