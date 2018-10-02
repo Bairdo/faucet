@@ -253,49 +253,6 @@ class FaucetDot1XTest(ValveTestBases.ValveTestSmall):
         FROM_RADIUS = Queue()
         TO_RADIUS = Queue()
 
-    def test_get_sm(self):
-        """Tests Chewie.get_state_machine()"""
-        self.assertEqual(len(self.chewie.state_machines), 0)
-        # creates the sm if it doesn't exist
-        sm = self.chewie.get_state_machine('12:34:56:78:9a:bc',  # pylint: disable=invalid-name
-                                           '00:00:00:00:00:01')
-
-        self.assertEqual(len(self.chewie.state_machines), 1)
-
-        self.assertIs(sm, self.chewie.get_state_machine('12:34:56:78:9a:bc',
-                                                        '00:00:00:00:00:01'))
-
-        self.assertIsNot(sm, self.chewie.get_state_machine('12:34:56:78:9a:bc',
-                                                           '00:00:00:00:00:02'))
-        self.assertIsNot(sm, self.chewie.get_state_machine('ab:cd:ef:12:34:56',
-                                                           '00:00:00:00:00:01'))
-
-        # 2 ports
-        self.assertEqual(len(self.chewie.state_machines), 2)
-        # port 1 has 2 macs
-        self.assertEqual(len(self.chewie.state_machines['00:00:00:00:00:01']), 2)
-        # port 2 has 1 mac
-        self.assertEqual(len(self.chewie.state_machines['00:00:00:00:00:02']), 1)
-
-    def test_get_sm_by_packet_id(self):
-        """Tests Chewie.get_sm_by_packet_id()"""
-        self.chewie.packet_id_to_mac[56] = {'src_mac': '12:34:56:78:9a:bc',
-                                            'port_id': '00:00:00:00:00:01'}
-        sm = self.chewie.get_state_machine('12:34:56:78:9a:bc',  # pylint: disable=invalid-name
-                                           '00:00:00:00:00:01')
-
-        self.assertIs(self.chewie.get_state_machine_from_radius_packet_id(56),
-                      sm)
-        with self.assertRaises(KeyError):
-            self.chewie.get_state_machine_from_radius_packet_id(20)
-
-    def test_get_next_radius_packet_id(self):
-        """Tests Chewie.get_next_radius_packet_id()"""
-        for i in range(0, 260):
-            _i = i % 256
-            self.assertEqual(self.chewie.get_next_radius_packet_id(),
-                             _i)
-
     @patch_things
     @setup_generators(sup_replies_success, radius_replies_success)
     def test_success_dot1x(self):
