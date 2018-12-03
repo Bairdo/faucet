@@ -99,17 +99,6 @@ class GaugePoller:
         # super call to update
         pass
 
-    def _stat_port_name(self, msg, stat, dp_id):
-        """Return port name as string based on port number."""
-        if stat.port_no == msg.datapath.ofproto.OFPP_CONTROLLER:
-            return 'CONTROLLER'
-        if stat.port_no == msg.datapath.ofproto.OFPP_LOCAL:
-            return 'LOCAL'
-        if stat.port_no in self.dp.ports:
-            return self.dp.ports[stat.port_no].name
-        self.logger.debug('stats for unknown port %u', stat.port_no)
-        return str(stat.port_no)
-
     @staticmethod
     def _format_port_stats(delim, stat):
         formatted_port_stats = []

@@ -75,6 +75,7 @@ class FaucetTestBase(unittest.TestCase):
 
     RUN_GAUGE = True
     REQUIRES_METERS = False
+    REQUIRES_METADATA = False
 
     _PORT_ACL_TABLE = 0
     _VLAN_TABLE = 1
@@ -890,11 +891,11 @@ dbs:
     def prom_macs_learned(self, port=None, vlan=None):
         labels = {
             'n': r'\d+',
-            'port': r'\d+',
+            'port': r'b\d+',
             'vlan': r'\d+',
         }
         if port:
-            labels['port'] = str(port)
+            labels['port'] = 'b%u' % port
         if vlan:
             labels['vlan'] = str(vlan)
         port_learned_macs_prom = self.scrape_prometheus_var(
@@ -1006,6 +1007,17 @@ dbs:
                 prom_line for prom_line in prom_lines if prom_line.startswith(var)]
         return prom_lines
 
+    _PROM_LINE_RE = re.compile(r'^(.+)\s+([0-9\.\-e]+)$')
+
+    def parse_prom_var(self, prom_line):
+        prom_line_match = self._PROM_LINE_RE.match(prom_line)
+        self.assertIsNotNone(
+            prom_line_match,
+            msg='Invalid prometheus line %s' % prom_line)
+        prom_var = prom_line_match.group(1)
+        prom_val = int(float(prom_line_match.group(2)))
+        return (prom_var, prom_val)
+
     def scrape_prometheus_var(self, var, labels=None, any_labels=False, default=None,
                               dpid=True, multiple=False, controller='faucet', retries=3):
         if dpid:
@@ -1027,20 +1039,13 @@ dbs:
                     label_values.append('%s="%s"' % (label, value))
                 label_values_re = r'\{%s\}' % r'\S+'.join(label_values)
         var_re = re.compile(r'^%s%s$' % (var, label_values_re))
-        prom_line_re = re.compile(r'^(.+)\s+([0-9\.\-e]+)$')
         for _ in range(retries):
             results = []
             prom_lines = self.scrape_prometheus(controller, var=var)
             for prom_line in prom_lines:
-                prom_line_match = prom_line_re.match(prom_line)
-                self.assertIsNotNone(
-                    prom_line_match,
-                    msg='Invalid prometheus line %s in %s' % (prom_line, prom_lines))
-                prom_var = prom_line_match.group(1)
-                value = prom_line_match.group(2)
+                prom_var, prom_val = self.parse_prom_var(prom_line)
                 if var_re.match(prom_var):
-                    value_int = int(float(value))
-                    results.append((var, value_int))
+                    results.append((var, prom_val))
                     if not multiple:
                         break
             if results:
@@ -1090,7 +1095,7 @@ dbs:
         """Return the number of times FAUCET has processed a reload request."""
         for _ in range(retries):
             count = self.scrape_prometheus_var(
-                'faucet_config_reload_requests', default=None, dpid=False)
+                'faucet_config_reload_requests_total', default=None, dpid=False)
             if count:
                 break
             time.sleep(1)
@@ -1210,7 +1215,7 @@ dbs:
                 host.cmd(self.scapy_dhcp(mac, host.defaultIntf()))
                 new_locations = set()
                 for line in self.scrape_prometheus(var='learned_macs'):
-                    location, mac_float = line.split(' ')
+                    location, mac_float = self.parse_prom_var(line)
                     if self.mac_from_int(int(float(mac_float))) == mac:
                         new_locations.add(location)
                 if locations != new_locations:
@@ -1297,7 +1302,7 @@ dbs:
         for port in ports:
             port_no = self.port_map['port_%u' % port]
             port_vlan_hosts_learned += self.scrape_prometheus_var(
-                'port_vlan_hosts_learned', {'vlan': str(vlan), 'port': int(port_no)},
+                'port_vlan_hosts_learned', {'vlan': str(vlan), 'port': 'b%u' % port_no},
                 default=0)
             prom_macs_learned += len(self.prom_macs_learned(
                 vlan=vlan, port=port_no))
@@ -1628,9 +1633,9 @@ dbs:
                              cold_start=True, change_expected=True,
                              hup=True, reconf_funcs=None):
         """HUP and verify the HUP was processed."""
-        var = 'faucet_config_reload_warm'
+        var = 'faucet_config_reload_warm_total'
         if cold_start:
-            var = 'faucet_config_reload_cold'
+            var = 'faucet_config_reload_cold_total'
         old_count = int(
             self.scrape_prometheus_var(var, dpid=True, default=0))
         start_configure_count = self.get_configure_count()
@@ -1713,10 +1718,14 @@ dbs:
             time.sleep(1)
         self.fail(msg=msg)
 
+    def port_labels(self, port_no):
+        port_name = 'b%u' % port_no
+        return {'port': port_name, 'port_description': port_name}
+
     def wait_port_status(self, dpid, port_no, status, expected_status, timeout=10):
         for _ in range(timeout):
             port_status = self.scrape_prometheus_var(
-                'port_status', {'port': port_no}, default=None, dpid=dpid)
+                'port_status', self.port_labels(port_no), default=None, dpid=dpid)
             if port_status is not None and port_status == expected_status:
                 return
             self._portmod(dpid, port_no, status, OFPPC_PORT_DOWN)

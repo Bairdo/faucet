@@ -76,7 +76,6 @@ class Valve:
     """
 
     __slots__ = [
-        'base_prom_labels',
         'dot1x',
         'dp',
         'flood_manager',
@@ -116,20 +115,17 @@ class Valve:
         self._last_pipeline_flows = []
         self.dp_init()
 
-    def port_labels(self, port):
-        return dict(self.base_prom_labels, port=port.number)
-
     def _port_vlan_labels(self, port, vlan):
-        return dict(self.base_prom_labels, vlan=vlan.vid, port=port.number)
+        return dict(self.dp.port_labels(port.number), vlan=vlan.vid)
 
     def _inc_var(self, var, labels=None, val=1):
         if labels is None:
-            labels = self.base_prom_labels
+            labels = self.dp.base_prom_labels()
         self.metrics.inc_var(var, labels, val)
 
     def _set_var(self, var, val, labels=None):
         if labels is None:
-            labels = self.base_prom_labels
+            labels = self.dp.base_prom_labels()
         metrics_var = getattr(self.metrics, var)
         metrics_var.labels(**labels).set(val)
 
@@ -145,10 +141,6 @@ class Valve:
         self.logger = ValveLogger(
             logging.getLogger(self.logname + '.valve'), self.dp.dp_id, self.dp.name)
         self.ofchannel_logger = None
-        self.base_prom_labels = {
-            'dp_id': hex(self.dp.dp_id),
-            'dp_name': self.dp.name,
-        }
         self._packet_in_count_sec = 0
         self._last_packet_in_sec = 0
         self._last_advertise_sec = 0
@@ -200,7 +192,6 @@ class Valve:
                 self.dp.group_table, self.dp.groups,
                 self.dp.combinatorial_port_flood)
         eth_dst_hairpin_table = self.dp.tables.get('eth_dst_hairpin', None)
-        egress_table = self.dp.tables.get('egress', None)
         host_manager_cl = valve_host.ValveHostManager
         if self.dp.use_idle_timeout:
             host_manager_cl = valve_host.ValveHostFlowRemovedManager
@@ -409,7 +400,7 @@ class Valve:
     def ofdescstats_handler(self, body):
         """Handle OF DP description."""
         labels = dict(
-            self.base_prom_labels,
+            self.dp.base_prom_labels(),
             mfr_desc=valve_util.utf8_decode(body.mfr_desc),
             hw_desc=valve_util.utf8_decode(body.hw_desc),
             sw_desc=valve_util.utf8_decode(body.sw_desc),
@@ -419,8 +410,11 @@ class Valve:
 
     def _set_port_status(self, port_no, port_status):
         """Set port operational status."""
-        labels = dict(self.base_prom_labels, port=port_no)
-        self._set_var('port_status', port_status, labels=labels)
+        port = self.dp.ports.get(port_no, None)
+        if port is None:
+            return
+        port_labels = self.dp.port_labels(port.number)
+        self._set_var('port_status', port_status, labels=port_labels)
         if port_status:
             self.dp.dyn_up_ports.add(port_no)
         else:
@@ -576,7 +570,7 @@ class Valve:
         self._set_var(
             'port_stack_state',
             port.dyn_stack_current_state,
-            labels=self.port_labels(port))
+            labels=self.dp.port_labels(port.number))
         if port.is_stack_up() or port.is_stack_down():
             port_stack_up = port.is_stack_up()
             for valve in [self] + other_valves:
@@ -871,7 +865,7 @@ class Valve:
         return self.ports_delete([port_num])
 
     def _reset_lacp_status(self, port):
-        self._set_var('port_lacp_status', port.dyn_lacp_up, labels=self.port_labels(port))
+        self._set_var('port_lacp_status', port.dyn_lacp_up, labels=self.dp.port_labels(port.number))
 
     def lacp_down(self, port, cold_start=False):
         """Return OpenFlow messages when LACP is down on a port."""
@@ -1193,14 +1187,14 @@ class Valve:
 
     def update_config_metrics(self):
         """Update table names for configuration."""
-        self.metrics.reset_dpid(self.base_prom_labels)
+        self.metrics.reset_dpid(self.dp.base_prom_labels())
         self._reset_dp_status()
         for table in self.dp.tables.values():
             table_id = table.table_id
             self._set_var(
                 'faucet_config_table_names',
                 table_id,
-                labels=dict(self.base_prom_labels, table_name=table.name))
+                labels=dict(self.dp.base_prom_labels(), table_name=table.name))
 
     def update_metrics(self, now, updated_port=None, rate_limited=False):
         """Update Gauge/metrics."""
@@ -1209,7 +1203,7 @@ class Valve:
             if vlan.dyn_last_updated_metrics_sec and rate_limited:
                 if now - vlan.dyn_last_updated_metrics_sec < self.dp.metrics_rate_limit_sec:
                     return False
-            vlan_labels = dict(self.base_prom_labels, vlan=vlan.vid)
+            vlan_labels = dict(self.dp.base_prom_labels(), vlan=vlan.vid)
             self._set_var('vlan_hosts_learned', vlan.hosts_count(), labels=vlan_labels)
             self._set_var('vlan_learn_bans', vlan.dyn_learn_ban_count, labels=vlan_labels)
             for ipv in vlan.ipvs():
@@ -1220,7 +1214,7 @@ class Valve:
             return True
 
         def _update_port(vlan, port):
-            port_labels = self.port_labels(port)
+            port_labels = self.dp.port_labels(port.number)
             port_vlan_labels = self._port_vlan_labels(port, vlan)
             port_vlan_hosts_learned = port.hosts_count(vlans=[vlan])
             self._set_var(
@@ -1346,7 +1340,7 @@ class Valve:
                 expired_hosts = self.host_manager.expire_hosts_from_vlan(vlan, now)
                 if not self.dp.idle_dst:
                     for entry in expired_hosts:
-                         ofmsgs.extend(self.host_manager.delete_host_from_vlan(entry.eth_src, vlan))
+                        ofmsgs.extend(self.host_manager.delete_host_from_vlan(entry.eth_src, vlan))
                 for entry in expired_hosts:
                     self._notify(
                         {'L2_EXPIRE': {
@@ -1541,7 +1535,15 @@ class Valve:
         error_txt = msg
         if orig_msgs:
             error_txt = '%s caused by %s' % (error_txt, orig_msgs[0])
-        self.logger.error('OFError %s' % error_txt)
+        error_type = 'UNKNOWN'
+        error_code = 'UNKNOWN'
+        try:
+            error_tuple = valve_of.OFERROR_TYPE_CODE[msg.type]
+            error_type = error_tuple[0]
+            error_code = error_tuple[1][msg.code]
+        except KeyError:
+            pass
+        self.logger.error('OFError type: %s code: %s %s' % (error_type, error_code, error_txt))
 
     def prepare_send_flows(self, flow_msgs):
         """Prepare to send flows to datapath.

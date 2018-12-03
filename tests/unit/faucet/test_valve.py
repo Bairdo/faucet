@@ -148,6 +148,7 @@ dps:
                 number: 4
                 native_vlan: v300
             5:
+                description: p5
                 stack:
                     dp: s4
                     port: 5
@@ -168,6 +169,7 @@ dps:
                 number: 4
                 native_vlan: v300
             5:
+                description: p5
                 number: 5
                 stack:
                     dp: s3
@@ -438,7 +440,7 @@ class ValveTestBases:
             if existing_config:
                 self.assertTrue(self.valves_manager.config_watcher.files_changed())
             self.last_flows_to_dp[self.DP_ID] = []
-            var = 'faucet_config_reload_%s' % reload_type
+            var = 'faucet_config_reload_%s_total' % reload_type
             self.prom_inc(
                 partial(self.valves_manager.request_reload_configs,
                         time.time(), self.config_file), var=var, inc_expected=reload_expected)
@@ -457,22 +459,35 @@ class ValveTestBases:
                 self.valve.datapath_connect(time.time(), discovered_up_ports))
             self.assertEqual(1, int(self.get_prom('dp_status')))
             for port_no in discovered_up_ports:
-                self.set_port_up(port_no)
+                if port_no in self.valve.dp.ports:
+                    self.set_port_up(port_no)
             self.assertTrue(self.valve.dp.to_conf())
+
+        def port_labels(self, port_no):
+            port = self.valve.dp.ports[port_no]
+            return {'port': port.name, 'port_description': port.description}
+
+        def port_expected_status(self, port_no, exp_status):
+            if port_no not in self.valve.dp.ports:
+                return
+            labels = self.port_labels(port_no)
+            status = int(self.get_prom('port_status', labels=labels))
+            self.assertEqual(
+                status, exp_status,
+                msg='status %u != expected %u for port %s' % (
+                    status, exp_status, labels))
 
         def set_port_down(self, port_no):
             """Set port status of port to down."""
             self.table.apply_ofmsgs(self.valve.port_status_handler(
                 port_no, ofp.OFPPR_DELETE, ofp.OFPPS_LINK_DOWN))
-            self.assertEqual(
-                0, int(self.get_prom('port_status', labels={'port': str(port_no)})))
+            self.port_expected_status(port_no, 0)
 
         def set_port_up(self, port_no):
             """Set port status of port to up."""
             self.table.apply_ofmsgs(self.valve.port_status_handler(
                 port_no, ofp.OFPPR_ADD, 0))
-            self.assertEqual(
-                1, int(self.get_prom('port_status', labels={'port': str(port_no)})))
+            self.port_expected_status(port_no, 1)
 
         def flap_port(self, port_no):
             """Flap op status on a port."""
@@ -606,7 +621,7 @@ class ValveTestBases:
             now = time.time()
             self.prom_inc(
                 partial(self.valves_manager.valve_packet_in, now, self.valve, msg),
-                'of_packet_ins')
+                'of_packet_ins_total')
             rcv_packet_ofmsgs = self.last_flows_to_dp[self.DP_ID]
             self.table.apply_ofmsgs(rcv_packet_ofmsgs)
             for valve_service in (
@@ -641,7 +656,7 @@ class ValveTestBases:
         def test_disconnect(self):
             """Test disconnection of DP from controller."""
             self.assertEqual(1, int(self.get_prom('dp_status')))
-            self.prom_inc(partial(self.valve.datapath_disconnect), 'of_dp_disconnections')
+            self.prom_inc(partial(self.valve.datapath_disconnect), 'of_dp_disconnections_total')
             self.assertEqual(0, int(self.get_prom('dp_status')))
 
         def test_unexpected_port(self):
@@ -652,7 +667,7 @@ class ValveTestBases:
                     'eth_dst': self.UNKNOWN_MAC,
                     'ipv4_src': '10.0.0.1',
                     'ipv4_dst': '10.0.0.2'}),
-                'of_unexpected_packet_ins',
+                'of_unexpected_packet_ins_total',
                 inc_expected=True)
 
         def test_oferror(self):
@@ -1615,6 +1630,31 @@ dps:
         self.update_config(self.LESS_CONFIG, reload_type='warm')
 
 
+class ValveOFErrorTestCase(ValveTestBases.ValveTestSmall):
+    """Test decoding of OFErrors."""
+
+    def setUp(self):
+        self.setup_valve(CONFIG)
+
+    def test_oferror_parser(self):
+        for type_code, error_tuple in valve_of.OFERROR_TYPE_CODE.items():
+            self.assertTrue(isinstance(type_code, int))
+            type_str, error_codes = error_tuple
+            self.assertTrue(isinstance(type_str, str))
+            for error_code, error_str in error_codes.items():
+                self.assertTrue(isinstance(error_code, int))
+                self.assertTrue(isinstance(error_str, str))
+        test_err = parser.OFPErrorMsg(
+            datapath=None, type_=ofp.OFPET_FLOW_MOD_FAILED, code=ofp.OFPFMFC_UNKNOWN)
+        self.valve.oferror(test_err)
+        test_unknown_type_err = parser.OFPErrorMsg(
+            datapath=None, type_=666, code=ofp.OFPFMFC_UNKNOWN)
+        self.valve.oferror(test_unknown_type_err)
+        test_unknown_code_err = parser.OFPErrorMsg(
+            datapath=None, type_=ofp.OFPET_FLOW_MOD_FAILED, code=666)
+        self.valve.oferror(test_unknown_code_err)
+
+
 class ValveAddVLANTestCase(ValveTestBases.ValveTestSmall):
     """Test adding VLAN."""
 
@@ -1906,14 +1946,17 @@ dps:
             priority: 1
         interfaces:
             1:
+                description: p1
                 stack:
                     dp: s2
                     port: 1
             2:
+                description: p2
                 stack:
                     dp: s2
                     port: 2
             3:
+                description: p3
                 native_vlan: v100
     s2:
         hardware: 'Open vSwitch'
@@ -1923,25 +1966,31 @@ dps:
             max_per_interval: 1
         interfaces:
             1:
+                description: p1
                 stack:
                     dp: s1
                     port: 1
             2:
+                description: p2
                 stack:
                     dp: s1
                     port: 2
             3:
+                description: p3
                 stack:
                     dp: s3
                     port: 2
             4:
+                description: p4
                 native_vlan: v100
     s3:
         dp_id: 0x3
         interfaces:
             1:
+                description: p1
                 native_vlan: v100
             2:
+                description: p2
                 stack:
                     dp: s2
                     port: 3
@@ -2218,15 +2267,16 @@ vlans:
     def test_lacp(self):
         """Test LACP comes up."""
         test_port = 1
+        labels = self.port_labels(test_port)
         self.assertEqual(
-            0, int(self.get_prom('port_lacp_status', labels={'port': str(test_port)})))
+            0, int(self.get_prom('port_lacp_status', labels=labels)))
         self.rcv_packet(test_port, 0, {
             'actor_system': '0e:00:00:00:00:02',
             'partner_system': FAUCET_MAC,
             'eth_dst': slow.SLOW_PROTOCOL_MULTICAST,
             'eth_src': '0e:00:00:00:00:02'})
         self.assertEqual(
-            1, int(self.get_prom('port_lacp_status', labels={'port': str(test_port)})))
+            1, int(self.get_prom('port_lacp_status', labels=labels)))
         self.learn_hosts()
         self.verify_expiry()
 
